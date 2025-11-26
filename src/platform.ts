@@ -1,29 +1,53 @@
-import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
+import type {
+  API,
+  Characteristic,
+  DynamicPlatformPlugin,
+  Logging,
+  PlatformAccessory,
+  PlatformConfig,
+  Service,
+} from 'homebridge';
 
-import { ExamplePlatformAccessory } from './platformAccessory.js';
-import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
-
-// This is only required when using Custom Services and Characteristics not support by HomeKit
-import { EveHomeKitTypes } from 'homebridge-lib/EveHomeKitTypes';
+import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
+import {
+  PLATFORM_NAME,
+  PLUGIN_NAME,
+  TEMPERATURE_SENSORS,
+  DEFAULT_POLLING_INTERVAL,
+  MIN_POLLING_INTERVAL,
+  SensorDefinition,
+} from './settings.js';
+import { IESClient } from './api/client.js';
+import { IESApiError } from './api/types.js';
 
 /**
- * HomebridgePlatform
- * This class is the main constructor for your plugin, this is where you should
- * parse the user config and discover/register accessories with Homebridge.
+ * Plugin configuration interface
  */
-export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
+interface IESHeatPumpConfig extends PlatformConfig {
+  deviceId?: string;
+  cookies?: string;
+  pollingInterval?: number;
+}
+
+/**
+ * IES Heat Pump Platform
+ * Main platform class that manages temperature sensor accessories
+ */
+export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
 
-  // this is used to track restored cached accessories
-  public readonly accessories: Map<string, PlatformAccessory> = new Map();
-  public readonly discoveredCacheUUIDs: string[] = [];
+  // Cached accessories from disk
+  private readonly accessories: Map<string, PlatformAccessory> = new Map();
 
-  // This is only required when using Custom Services and Characteristics not support by HomeKit
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public readonly CustomServices: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public readonly CustomCharacteristics: any;
+  // Active accessory handlers
+  private readonly sensorAccessories: Map<string, TemperatureSensorAccessory> = new Map();
+
+  // API client (initialized after config validation)
+  private apiClient?: IESClient;
+
+  // Polling timer
+  private pollingTimer?: NodeJS.Timeout;
 
   constructor(
     public readonly log: Logging,
@@ -33,117 +57,165 @@ export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
     this.Service = api.hap.Service;
     this.Characteristic = api.hap.Characteristic;
 
-    // This is only required when using Custom Services and Characteristics not support by HomeKit
-    this.CustomServices = new EveHomeKitTypes(this.api).Services;
-    this.CustomCharacteristics = new EveHomeKitTypes(this.api).Characteristics;
+    this.log.debug('Initializing IES Heat Pump platform');
 
-    this.log.debug('Finished initializing platform:', this.config.name);
-
-    // When this event is fired it means Homebridge has restored all cached accessories from disk.
-    // Dynamic Platform plugins should only register new accessories after this event was fired,
-    // in order to ensure they weren't added to homebridge already. This event can also be used
-    // to start discovery of new accessories.
+    // Wait for Homebridge to finish loading cached accessories
     this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
-      // run the method to discover / register your devices as accessories
-      this.discoverDevices();
+      this.log.debug('didFinishLaunching callback');
+      this.setupPlatform();
     });
   }
 
   /**
-   * This function is invoked when homebridge restores cached accessories from disk at startup.
-   * It should be used to set up event handlers for characteristics and update respective values.
+   * Called by Homebridge to restore cached accessories
    */
-  configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName);
-
-    // add the restored accessory to the accessories cache, so we can track if it has already been registered
+  configureAccessory(accessory: PlatformAccessory): void {
+    this.log.info('Restoring cached accessory:', accessory.displayName);
     this.accessories.set(accessory.UUID, accessory);
   }
 
   /**
-   * This is an example method showing how to register discovered accessories.
-   * Accessories must only be registered once, previously created accessories
-   * must not be registered again to prevent "duplicate UUID" errors.
+   * Main setup after Homebridge is ready
    */
-  discoverDevices() {
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    const exampleDevices = [
+  private async setupPlatform(): Promise<void> {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    // Validate required config
+    if (!typedConfig.deviceId) {
+      this.log.error('Missing required config: deviceId. Please configure your device ID in the plugin settings.');
+      return;
+    }
+
+    if (!typedConfig.cookies) {
+      this.log.error('Missing required config: cookies. Please provide your session cookies in the plugin settings.');
+      return;
+    }
+
+    // Initialize API client
+    this.apiClient = new IESClient(
       {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
+        deviceId: typedConfig.deviceId,
+        cookies: typedConfig.cookies,
       },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
-      {
-        // This is an example of a device which uses a Custom Service
-        exampleUniqueId: 'IJKL',
-        exampleDisplayName: 'Backyard',
-        CustomService: 'AirPressureSensor',
-      },
-    ];
+      this.log,
+    );
 
-    // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of exampleDevices) {
-      // generate a unique id for the accessory this should be generated from
-      // something globally unique, but constant, for example, the device serial
-      // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
+    // Discover/register sensors
+    this.discoverSensors();
 
-      // see if an accessory with the same uuid has already been registered and restored from
-      // the cached devices we stored in the `configureAccessory` method above
-      const existingAccessory = this.accessories.get(uuid);
+    // Start polling
+    const interval = Math.max(
+      typedConfig.pollingInterval ?? DEFAULT_POLLING_INTERVAL,
+      MIN_POLLING_INTERVAL,
+    );
+    this.startPolling(interval);
 
-      if (existingAccessory) {
-        // the accessory already exists
-        this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
+    // Do initial fetch
+    await this.pollApi();
+  }
 
-        // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-        // existingAccessory.context.device = device;
-        // this.api.updatePlatformAccessories([existingAccessory]);
+  /**
+   * Register temperature sensor accessories
+   */
+  private discoverSensors(): void {
+    const registeredUUIDs: string[] = [];
+    const typedConfig = this.config as IESHeatPumpConfig;
 
-        // create the accessory handler for the restored accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, existingAccessory);
+    for (const sensorDef of TEMPERATURE_SENSORS) {
+      // Generate unique UUID from device ID + sensor paramId
+      const uuid = this.api.hap.uuid.generate(
+        `${typedConfig.deviceId}-${sensorDef.paramId}`,
+      );
+      registeredUUIDs.push(uuid);
 
-        // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-        // remove platform accessories when no longer present
-        // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-        // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+      let accessory = this.accessories.get(uuid);
+
+      if (accessory) {
+        // Restore from cache
+        this.log.info('Restoring sensor from cache:', sensorDef.name);
+        accessory.context.sensorDefinition = sensorDef;
       } else {
-        // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.exampleDisplayName);
-
-        // create a new accessory
-        const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
-
-        // store a copy of the device object in the `accessory.context`
-        // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.device = device;
-
-        // create the accessory handler for the newly create accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, accessory);
-
-        // link the accessory to your platform
+        // Create new accessory
+        this.log.info('Adding new sensor:', sensorDef.name);
+        accessory = new this.api.platformAccessory(sensorDef.name, uuid);
+        accessory.context.sensorDefinition = sensorDef;
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       }
 
-      // push into discoveredCacheUUIDs
-      this.discoveredCacheUUIDs.push(uuid);
+      // Create handler
+      const handler = new TemperatureSensorAccessory(this, accessory);
+      this.sensorAccessories.set(sensorDef.paramId, handler);
     }
 
-    // you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
-    // for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
-    // from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
+    // Remove any cached accessories that are no longer defined
     for (const [uuid, accessory] of this.accessories) {
-      if (!this.discoveredCacheUUIDs.includes(uuid)) {
-        this.log.info('Removing existing accessory from cache:', accessory.displayName);
+      if (!registeredUUIDs.includes(uuid)) {
+        this.log.info('Removing obsolete accessory:', accessory.displayName);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      }
+    }
+  }
+
+  /**
+   * Start the polling timer
+   */
+  private startPolling(intervalSeconds: number): void {
+    this.log.info(`Starting API polling every ${intervalSeconds} seconds`);
+
+    this.pollingTimer = setInterval(
+      () => this.pollApi(),
+      intervalSeconds * 1000,
+    );
+  }
+
+  /**
+   * Fetch data from API and update accessories
+   */
+  private async pollApi(): Promise<void> {
+    if (!this.apiClient) {
+      return;
+    }
+
+    try {
+      const readings = await this.apiClient.fetchReadings();
+
+      // Update each sensor with its reading
+      for (const [paramId, handler] of this.sensorAccessories) {
+        const reading = readings.get(paramId);
+        const sensorDef = handler.accessory.context.sensorDefinition as SensorDefinition;
+
+        if (reading) {
+          // Check auto-hide threshold (for outdoor temp)
+          if ('autoHideThreshold' in sensorDef &&
+              sensorDef.autoHideThreshold !== undefined &&
+              reading.value < sensorDef.autoHideThreshold) {
+            this.log.debug(
+              `Sensor ${sensorDef.name} showing invalid reading: ${reading.value}°C (below threshold ${sensorDef.autoHideThreshold}°C)`,
+            );
+            // Still update with actual value so user can see it's not working
+          }
+
+          handler.clearFault();
+          handler.updateTemperature(reading.value);
+        } else {
+          this.log.warn(`No reading found for sensor: ${paramId}`);
+        }
+      }
+
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        if (error.isAuthError) {
+          this.log.error('Authentication failed - please update your cookies in the plugin config');
+        } else {
+          this.log.error(`API error: ${error.message}`);
+        }
+
+        // Mark all sensors as faulted
+        for (const handler of this.sensorAccessories.values()) {
+          handler.setUnavailable();
+        }
+      } else {
+        this.log.error('Unexpected error during API poll:', error);
       }
     }
   }

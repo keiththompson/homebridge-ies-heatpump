@@ -1,18 +1,51 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "IESHeatPump",
   "pluginType": "platform",
   "singular": true,
-  "strictValidation": false,
+  "strictValidation": true,
   "schema": {
     "type": "object",
-    "required": ["name"],
-    "additionalProperties": false,
+    "required": ["name", "deviceId", "cookies"],
     "properties": {
       "name": {
         "title": "Name",
         "type": "string",
-        "default": "Example Dynamic Platform"
+        "default": "IES Heat Pump",
+        "description": "The name that will appear in HomeKit"
+      },
+      "deviceId": {
+        "title": "Device ID",
+        "type": "string",
+        "description": "Your IES heat pump device ID (found in the monitoring URL)",
+        "placeholder": "999"
+      },
+      "cookies": {
+        "title": "Authentication Cookies",
+        "type": "string",
+        "description": "ASP.NET session cookies from browser DevTools (copy the full Cookie header value)"
+      },
+      "pollingInterval": {
+        "title": "Polling Interval (seconds)",
+        "type": "integer",
+        "default": 60,
+        "minimum": 30,
+        "maximum": 3600,
+        "description": "How often to fetch temperature data from the API"
       }
     }
-  }
+  },
+  "layout": [
+    {
+      "type": "fieldset",
+      "title": "Device Configuration",
+      "items": ["deviceId", "cookies"]
+    },
+    {
+      "type": "fieldset",
+      "title": "Advanced Settings",
+      "expandable": true,
+      "expanded": false,
+      "items": ["pollingInterval"]
+    }
+  ]
 }
