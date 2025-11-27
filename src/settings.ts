@@ -23,16 +23,6 @@ export const MIN_POLLING_INTERVAL = 30;
  */
 export const TEMPERATURE_SENSORS = [
   {
-    paramId: '_USER.Input.THeatSupply',
-    name: 'Flow Temperature',
-    subtypeId: 'flow-temp',
-  },
-  {
-    paramId: '_USER.Input.THeatReturn',
-    name: 'Return Temperature',
-    subtypeId: 'return-temp',
-  },
-  {
     paramId: '_USER.Input.Tamb',
     name: 'Outdoor Temperature',
     subtypeId: 'outdoor-temp',
