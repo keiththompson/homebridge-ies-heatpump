@@ -196,6 +196,20 @@ export class IESClient {
   }
 
   /**
+   * Set the heating room setpoint
+   */
+  async setHeatingRoomSetpoint(temperature: number): Promise<void> {
+    this.log.info(`Setting heating room setpoint to ${temperature}°C`);
+
+    const csrfToken = await this.fetchCsrfToken();
+
+    // Format value with decimal (API expects "30.0" not "30")
+    const valueStr = temperature.toFixed(1);
+
+    await this.postSetting('_USER_HeatSPCtrl_TroomSet_T', valueStr, csrfToken);
+  }
+
+  /**
    * Fetch CSRF token from the configurations page
    */
   private async fetchCsrfToken(): Promise<string> {

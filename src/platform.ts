@@ -11,12 +11,14 @@ import type {
 import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
+import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
 import {
   PLATFORM_NAME,
   PLUGIN_NAME,
   TEMPERATURE_SENSORS,
   HOT_WATER_PARAMS,
   CURVE_OFFSET_PARAM,
+  HEATING_ROOM_SETPOINT_PARAM,
   DEFAULT_POLLING_INTERVAL,
   MIN_POLLING_INTERVAL,
   SensorDefinition,
@@ -48,6 +50,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private readonly sensorAccessories: Map<string, TemperatureSensorAccessory> = new Map();
   private hotWaterThermostat?: HotWaterThermostatAccessory;
   private curveOffsetAccessory?: CurveOffsetAccessory;
+  private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
@@ -113,6 +116,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     this.discoverSensors();
     this.discoverHotWater();
     this.discoverCurveOffset();
+    this.discoverHeatingRoomSetpoint();
     this.cleanupObsoleteAccessories();
 
     // Start polling
@@ -216,6 +220,34 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   }
 
   /**
+   * Register heating room setpoint accessory
+   */
+  private discoverHeatingRoomSetpoint(): void {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    // Generate unique UUID for heating room setpoint
+    const uuid = this.api.hap.uuid.generate(
+      `${typedConfig.deviceId}-heating-room-setpoint`,
+    );
+    this.registeredUUIDs.push(uuid);
+
+    let accessory = this.accessories.get(uuid);
+
+    if (accessory) {
+      // Restore from cache
+      this.log.info('Restoring Heating Room Setpoint from cache');
+    } else {
+      // Create new accessory
+      this.log.info('Adding new Heating Room Setpoint accessory');
+      accessory = new this.api.platformAccessory('Room Setpoint', uuid);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+
+    // Create handler
+    this.heatingRoomSetpointAccessory = new HeatingRoomSetpointAccessory(this, accessory);
+  }
+
+  /**
    * Remove any cached accessories that are no longer defined
    */
   private cleanupObsoleteAccessories(): void {
@@ -305,6 +337,15 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         }
       }
 
+      // Update heating room setpoint
+      if (this.heatingRoomSetpointAccessory) {
+        const setpoint = readings.get(HEATING_ROOM_SETPOINT_PARAM);
+        if (setpoint) {
+          this.heatingRoomSetpointAccessory.clearFault();
+          this.heatingRoomSetpointAccessory.updateSetpoint(setpoint.value);
+        }
+      }
+
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {
@@ -319,6 +360,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         }
         this.hotWaterThermostat?.setUnavailable();
         this.curveOffsetAccessory?.setUnavailable();
+        this.heatingRoomSetpointAccessory?.setUnavailable();
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
@@ -365,6 +407,28 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.log.error(`Failed to set curve offset: ${error.message}`);
       } else {
         this.log.error('Unexpected error setting curve offset:', error);
+      }
+    }
+  }
+
+  /**
+   * Set heating room setpoint via API
+   */
+  async setHeatingRoomSetpoint(temperature: number): Promise<void> {
+    if (!this.apiClient) {
+      this.log.error('Cannot set heating room setpoint - API client not initialized');
+      return;
+    }
+
+    try {
+      await this.apiClient.setHeatingRoomSetpoint(temperature);
+      // Refresh values immediately after successful write
+      await this.pollApi();
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        this.log.error(`Failed to set heating room setpoint: ${error.message}`);
+      } else {
+        this.log.error('Unexpected error setting heating room setpoint:', error);
       }
     }
   }

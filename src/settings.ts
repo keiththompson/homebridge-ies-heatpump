@@ -45,4 +45,10 @@ export const HOT_WATER_PARAMS = {
  */
 export const CURVE_OFFSET_PARAM = '_USER.HeatSPCtrl.ToffSet' as const;
 
+/**
+ * Heating Room Setpoint parameter ID
+ * Range: 5 to 40°C, whole numbers only
+ */
+export const HEATING_ROOM_SETPOINT_PARAM = '_USER.HeatSPCtrl.TroomSet' as const;
+
 export type SensorDefinition = typeof TEMPERATURE_SENSORS[number];
