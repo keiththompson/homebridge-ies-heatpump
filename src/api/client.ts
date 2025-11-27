@@ -182,6 +182,20 @@ export class IESClient {
   }
 
   /**
+   * Set the curve offset
+   */
+  async setCurveOffset(offset: number): Promise<void> {
+    this.log.info(`Setting curve offset to ${offset}°C`);
+
+    const csrfToken = await this.fetchCsrfToken();
+
+    // Format value with decimal (API expects "6.0" not "6")
+    const valueStr = offset.toFixed(1);
+
+    await this.postSetting('_USER_HeatSPCtrl_ToffSet_T', valueStr, csrfToken);
+  }
+
+  /**
    * Fetch CSRF token from the configurations page
    */
   private async fetchCsrfToken(): Promise<string> {

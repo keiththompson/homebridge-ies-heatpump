@@ -49,4 +49,10 @@ export const HOT_WATER_PARAMS = {
   heatingState: '_USER.Output.HotTapWater',
 } as const;
 
+/**
+ * Curve Offset parameter ID (heating curve temperature offset)
+ * Range: -10 to +10°C, whole numbers only
+ */
+export const CURVE_OFFSET_PARAM = '_USER.HeatSPCtrl.ToffSet' as const;
+
 export type SensorDefinition = typeof TEMPERATURE_SENSORS[number];

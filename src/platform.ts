@@ -10,11 +10,13 @@ import type {
 
 import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
+import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
 import {
   PLATFORM_NAME,
   PLUGIN_NAME,
   TEMPERATURE_SENSORS,
   HOT_WATER_PARAMS,
+  CURVE_OFFSET_PARAM,
   DEFAULT_POLLING_INTERVAL,
   MIN_POLLING_INTERVAL,
   SensorDefinition,
@@ -45,6 +47,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   // Active accessory handlers
   private readonly sensorAccessories: Map<string, TemperatureSensorAccessory> = new Map();
   private hotWaterThermostat?: HotWaterThermostatAccessory;
+  private curveOffsetAccessory?: CurveOffsetAccessory;
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
@@ -109,6 +112,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     // Discover/register accessories
     this.discoverSensors();
     this.discoverHotWater();
+    this.discoverCurveOffset();
     this.cleanupObsoleteAccessories();
 
     // Start polling
@@ -181,6 +185,34 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
     // Create handler
     this.hotWaterThermostat = new HotWaterThermostatAccessory(this, accessory);
+  }
+
+  /**
+   * Register curve offset accessory
+   */
+  private discoverCurveOffset(): void {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    // Generate unique UUID for curve offset
+    const uuid = this.api.hap.uuid.generate(
+      `${typedConfig.deviceId}-curve-offset`,
+    );
+    this.registeredUUIDs.push(uuid);
+
+    let accessory = this.accessories.get(uuid);
+
+    if (accessory) {
+      // Restore from cache
+      this.log.info('Restoring Curve Offset from cache');
+    } else {
+      // Create new accessory
+      this.log.info('Adding new Curve Offset accessory');
+      accessory = new this.api.platformAccessory('Curve Offset', uuid);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+
+    // Create handler
+    this.curveOffsetAccessory = new CurveOffsetAccessory(this, accessory);
   }
 
   /**
@@ -264,6 +296,15 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         }
       }
 
+      // Update curve offset
+      if (this.curveOffsetAccessory) {
+        const offset = readings.get(CURVE_OFFSET_PARAM);
+        if (offset) {
+          this.curveOffsetAccessory.clearFault();
+          this.curveOffsetAccessory.updateOffset(offset.value);
+        }
+      }
+
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {
@@ -277,6 +318,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
           handler.setUnavailable();
         }
         this.hotWaterThermostat?.setUnavailable();
+        this.curveOffsetAccessory?.setUnavailable();
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
@@ -299,6 +341,26 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.log.error(`Failed to set hot water setpoint: ${error.message}`);
       } else {
         this.log.error('Unexpected error setting hot water setpoint:', error);
+      }
+    }
+  }
+
+  /**
+   * Set curve offset via API
+   */
+  async setCurveOffset(offset: number): Promise<void> {
+    if (!this.apiClient) {
+      this.log.error('Cannot set curve offset - API client not initialized');
+      return;
+    }
+
+    try {
+      await this.apiClient.setCurveOffset(offset);
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        this.log.error(`Failed to set curve offset: ${error.message}`);
+      } else {
+        this.log.error('Unexpected error setting curve offset:', error);
       }
     }
   }
