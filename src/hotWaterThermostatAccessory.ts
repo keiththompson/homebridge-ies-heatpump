@@ -64,18 +64,15 @@ export class HotWaterThermostatAccessory {
         ],
       });
 
+    // Only AUTO mode - heat pump manages heating automatically
     this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
       .setProps({
         validValues: [
-          this.platform.Characteristic.TargetHeatingCoolingState.OFF,
-          this.platform.Characteristic.TargetHeatingCoolingState.HEAT,
           this.platform.Characteristic.TargetHeatingCoolingState.AUTO,
         ],
-      })
-      .onGet(this.getTargetHeatingCoolingState.bind(this))
-      .onSet(this.setTargetHeatingCoolingState.bind(this));
+      });
 
-    // Set initial target state to AUTO (heat pump controls it)
+    // Set target state to AUTO (heat pump controls it)
     this.service.updateCharacteristic(
       this.platform.Characteristic.TargetHeatingCoolingState,
       this.platform.Characteristic.TargetHeatingCoolingState.AUTO,
@@ -143,23 +140,6 @@ export class HotWaterThermostatAccessory {
 
     // Notify platform to write to API
     await this.platform.setHotWaterSetpoint(newTemp);
-  }
-
-  /**
-   * Get target heating/cooling state
-   */
-  private async getTargetHeatingCoolingState(): Promise<CharacteristicValue> {
-    // Always return AUTO - the heat pump manages this
-    return this.platform.Characteristic.TargetHeatingCoolingState.AUTO;
-  }
-
-  /**
-   * Set target heating/cooling state
-   */
-  private async setTargetHeatingCoolingState(value: CharacteristicValue): Promise<void> {
-    // For now, we don't support turning hot water on/off via this
-    // Just log it and keep it in AUTO mode
-    this.platform.log.debug(`Target heating state set to: ${value} (ignored, using AUTO)`);
   }
 
   /**
