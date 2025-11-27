@@ -231,6 +231,7 @@ export class IESClient {
 
   /**
    * POST a setting value to the API
+   * The form requires ALL fields to be sent, with -1 for unchanged selects and empty for unchanged text inputs
    */
   private async postSetting(fieldName: string, value: string, csrfToken: string): Promise<void> {
     const url = `${this.baseUrl}/Configurations/Save`;
@@ -240,18 +241,42 @@ export class IESClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-      // Build form data
+      // Build form data with ALL fields (server requires full form submission)
       const formData = new URLSearchParams();
+
+      // Button and device ID
+      formData.append('btnSubmit', '');
       formData.append('hdnDeviceId', this.deviceId);
+
+      // Select fields - use -1 for "no change"
+      formData.append('_USER_Parameters_MainSwitch_C', '-1');
+      formData.append('_USER_Parameters_SeasonMode_C', '-1');
+      formData.append('_USER_HeatSPCtrl_Type_C', '-1');
+      formData.append('_USER_HeatSPCtrl_Curve_C', '-1');
+      formData.append('_USER_HotWater_Source_C', '-1');
+      formData.append('_USER_Heating_Source_C', '-1');
+      formData.append('_USER_Heating_CtrlMode_C', '-1');
+
+      // Text/number fields - empty for "no change", or the value if this is the field being set
+      formData.append('_USER_HeatSPCtrl_ToffSet_T', fieldName === '_USER_HeatSPCtrl_ToffSet_T' ? value : '');
+      formData.append('_USER_HotWater_SetPoint_T', fieldName === '_USER_HotWater_SetPoint_T' ? value : '');
+      formData.append('_USER_Heating_SetPointMin_T', fieldName === '_USER_Heating_SetPointMin_T' ? value : '');
+      formData.append('_USER_HeatSPCtrl_TroomSet_T', fieldName === '_USER_HeatSPCtrl_TroomSet_T' ? value : '');
+      formData.append('_USER_Time_Year_T', '');
+      formData.append('_USER_Time_Month_T', '');
+      formData.append('_USER_Time_Day_T', '');
+      formData.append('_USER_Time_Hour_T', '');
+      formData.append('_USER_Time_Minute_T', '');
+
+      // CSRF token
       formData.append('__RequestVerificationToken', csrfToken);
-      formData.append(fieldName, value);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Cookie': this.cookies,
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json, text/html',
+          'Accept': 'text/html,application/xhtml+xml',
         },
         body: formData.toString(),
         signal: controller.signal,
