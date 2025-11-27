@@ -1,4 +1,5 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
+
 import type { IESHeatPumpPlatform } from './platform.js';
 
 /**
@@ -24,7 +25,8 @@ export class SeasonModeSwitchAccessory {
     this.modeName = modeName;
 
     // Set accessory information
-    this.accessory.getService(this.platform.Service.AccessoryInformation)!
+    this.accessory
+      .getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'IES')
       .setCharacteristic(this.platform.Characteristic.Model, 'Season Mode')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, `season-${modeName.toLowerCase()}`);
@@ -36,12 +38,14 @@ export class SeasonModeSwitchAccessory {
     }
 
     // Get or create Switch service
-    this.service = this.accessory.getService(this.platform.Service.Switch)
-      || this.accessory.addService(this.platform.Service.Switch);
+    this.service =
+      this.accessory.getService(this.platform.Service.Switch) ||
+      this.accessory.addService(this.platform.Service.Switch);
 
     this.service.setCharacteristic(this.platform.Characteristic.Name, modeName);
 
-    this.service.getCharacteristic(this.platform.Characteristic.On)
+    this.service
+      .getCharacteristic(this.platform.Characteristic.On)
       .onGet(this.getOn.bind(this))
       .onSet(this.setOn.bind(this));
 
@@ -75,10 +79,7 @@ export class SeasonModeSwitchAccessory {
    * Update switch state based on current mode
    */
   updateState(currentMode: number): void {
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.On,
-      currentMode === this.modeValue,
-    );
+    this.service.updateCharacteristic(this.platform.Characteristic.On, currentMode === this.modeValue);
   }
 
   setUnavailable(): void {
