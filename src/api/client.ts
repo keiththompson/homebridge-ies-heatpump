@@ -275,7 +275,7 @@ export class IESClient {
       formData.append('__RequestVerificationToken', csrfToken);
 
       const body = formData.toString();
-      this.log.info(`POST body: ${body}`);
+      this.log.debug(`POST body: ${body}`);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -292,20 +292,22 @@ export class IESClient {
 
       clearTimeout(timeoutId);
 
-      const responseText = await response.text();
-      this.log.info(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
-      this.log.info(`POST response body (first 1000 chars): ${responseText.substring(0, 1000)}`);
+      this.log.debug(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
+
+      // Check for redirect to login page (session expired)
+      if (response.redirected && response.url.includes('login')) {
+        throw new IESApiError(
+          'Session expired - redirected to login page. Please update your cookies.',
+          302,
+          true,
+        );
+      }
 
       if (!response.ok) {
         throw new IESApiError(
           `Failed to save setting: ${response.status}`,
           response.status,
         );
-      }
-
-      // Check if response contains error indicators
-      if (responseText.includes('error') || responseText.includes('Error')) {
-        this.log.warn('Response may contain errors - check response body');
       }
 
       this.log.info(`Successfully set ${fieldName} to ${value}`);
