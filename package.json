@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-ies-heatpump",
+  "name": "@keiththompson/homebridge-ies-heatpump",
   "displayName": "IES Heat Pump",
   "type": "module",
   "version": "1.0.9",
