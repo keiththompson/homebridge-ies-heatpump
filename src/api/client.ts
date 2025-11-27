@@ -80,7 +80,9 @@ export class IESClient {
       if (data.groups && Array.isArray(data.groups)) {
         this.log.info(`Number of groups: ${data.groups.length}`);
         for (const group of data.groups) {
-          this.log.info(`Group: ${group.groupName || group.groupId || 'unnamed'}, params: ${group.parameters?.length || 0}`);
+          const groupKeys = Object.keys(group);
+          this.log.info(`Group keys: ${groupKeys.join(', ')}`);
+          this.log.info(`Group content (first 500 chars): ${JSON.stringify(group).substring(0, 500)}`);
         }
       } else {
         this.log.warn(`Raw response (first 1000 chars): ${JSON.stringify(data).substring(0, 1000)}`);
