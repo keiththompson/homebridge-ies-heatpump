@@ -1,11 +1,7 @@
 import type { Logging } from 'homebridge';
-import {
-  IESApiResponse,
-  IESClientConfig,
-  IESApiError,
-  TemperatureReading,
-  OAuthTokenResponse,
-} from './types.js';
+
+import type { IESApiResponse, IESClientConfig, OAuthTokenResponse, TemperatureReading } from './types.js';
+import { IESApiError } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://www.ies-heatpumps.com';
 const AUTH_URL = 'https://login.ies-heatpumps.com';
@@ -58,7 +54,6 @@ export class IESClient {
       await this.completeOidcFlow(code, idToken, state, appCookies);
 
       this.log.info('Successfully authenticated with IES');
-
     } catch (error) {
       if (error instanceof IESApiError) {
         throw error;
@@ -73,15 +68,22 @@ export class IESClient {
   /**
    * Step 1: Start auth flow from main app to get OIDC correlation cookies, then get login page
    */
-  private async getLoginPage(): Promise<{ sessionCookies: string; csrfToken: string; returnUrl: string; state: string; appCookies: string }> {
+  private async getLoginPage(): Promise<{
+    sessionCookies: string;
+    csrfToken: string;
+    returnUrl: string;
+    state: string;
+    appCookies: string;
+  }> {
     this.log.debug('[Auth] Starting auth flow from main app...');
 
     // Step 1a: Hit the main app - this will redirect to the auth server and set OIDC cookies
     const initResponse = await fetch(this.baseUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'text/html,application/xhtml+xml',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       redirect: 'manual',
     });
@@ -109,8 +111,9 @@ export class IESClient {
     const loginResponse = await fetch(redirectUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'text/html,application/xhtml+xml',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       redirect: 'follow',
       signal: controller.signal,
@@ -173,8 +176,8 @@ export class IESClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': sessionCookies,
-        'Origin': AUTH_URL,
+        Cookie: sessionCookies,
+        Origin: AUTH_URL,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       body: formData.toString(),
@@ -210,7 +213,10 @@ export class IESClient {
   /**
    * Step 3: Get the authorization callback to obtain the authorization code and id_token
    */
-  private async getAuthorizationCode(cookies: string, returnUrl: string): Promise<{ code: string; idToken: string; sessionState: string }> {
+  private async getAuthorizationCode(
+    cookies: string,
+    returnUrl: string,
+  ): Promise<{ code: string; idToken: string; sessionState: string }> {
     this.log.debug('[Auth] Getting authorization code...');
 
     const callbackUrl = `${AUTH_URL}${returnUrl}`;
@@ -221,7 +227,7 @@ export class IESClient {
     const response = await fetch(callbackUrl, {
       method: 'GET',
       headers: {
-        'Cookie': cookies,
+        Cookie: cookies,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       redirect: 'manual',
@@ -282,8 +288,8 @@ export class IESClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': appCookies,
-        'Origin': AUTH_URL,
+        Cookie: appCookies,
+        Origin: AUTH_URL,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       body: formData.toString(),
@@ -345,9 +351,7 @@ export class IESClient {
    * Parse Set-Cookie headers into a cookie string
    */
   private parseCookies(setCookies: string[]): string {
-    return setCookies
-      .map(cookie => cookie.split(';')[0])
-      .join('; ');
+    return setCookies.map((cookie) => cookie.split(';')[0]).join('; ');
   }
 
   /**
@@ -419,15 +423,14 @@ export class IESClient {
         return;
       }
 
-      const tokenData = await response.json() as OAuthTokenResponse;
+      const tokenData = (await response.json()) as OAuthTokenResponse;
 
       this.accessToken = tokenData.access_token;
       this.refreshToken = tokenData.refresh_token;
-      this.tokenExpiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
+      this.tokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
 
       this.log.debug('Successfully refreshed OAuth tokens');
       this.log.debug(`Token expires at: ${this.tokenExpiresAt.toISOString()}`);
-
     } catch (error) {
       this.log.warn('Token refresh error, performing full authentication');
       await this.authenticate();
@@ -461,7 +464,7 @@ export class IESClient {
       throw new IESApiError('Not authenticated', undefined, true);
     }
     return {
-      'Authorization': `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${this.accessToken}`,
     };
   }
 
@@ -485,10 +488,7 @@ export class IESClient {
    * Fetch all readings (monitoring + settings combined)
    */
   async fetchReadings(): Promise<Map<string, TemperatureReading>> {
-    const [monitoring, settings] = await Promise.all([
-      this.fetchMonitoring(),
-      this.fetchSettings(),
-    ]);
+    const [monitoring, settings] = await Promise.all([this.fetchMonitoring(), this.fetchSettings()]);
 
     // Merge both maps, settings values override monitoring if duplicated
     const combined = new Map(monitoring);
@@ -502,7 +502,11 @@ export class IESClient {
   /**
    * Fetch data from a specific endpoint
    */
-  private async fetchFromEndpoint(url: string, endpointName: string, retryOnAuth = true): Promise<Map<string, TemperatureReading>> {
+  private async fetchFromEndpoint(
+    url: string,
+    endpointName: string,
+    retryOnAuth = true,
+  ): Promise<Map<string, TemperatureReading>> {
     this.log.debug(`Fetching ${endpointName} from: ${url}`);
 
     // Ensure we have a valid token
@@ -516,7 +520,7 @@ export class IESClient {
         method: 'GET',
         headers: {
           ...this.getAuthHeaders(),
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         signal: controller.signal,
       });
@@ -530,11 +534,7 @@ export class IESClient {
           this.accessToken = undefined; // Force re-auth
           return this.fetchFromEndpoint(url, endpointName, false);
         }
-        throw new IESApiError(
-          'Authentication failed - check your credentials',
-          response.status,
-          true,
-        );
+        throw new IESApiError('Authentication failed - check your credentials', response.status, true);
       }
 
       // Check for redirect to login page (another auth failure indicator)
@@ -544,23 +544,15 @@ export class IESClient {
           this.accessToken = undefined; // Force re-auth
           return this.fetchFromEndpoint(url, endpointName, false);
         }
-        throw new IESApiError(
-          'Session expired - authentication failed',
-          302,
-          true,
-        );
+        throw new IESApiError('Session expired - authentication failed', 302, true);
       }
 
       if (!response.ok) {
-        throw new IESApiError(
-          `API request failed with status ${response.status}`,
-          response.status,
-        );
+        throw new IESApiError(`API request failed with status ${response.status}`, response.status);
       }
 
-      const data = await response.json() as IESApiResponse;
+      const data = (await response.json()) as IESApiResponse;
       return this.parseResponse(data, endpointName);
-
     } catch (error) {
       if (error instanceof IESApiError) {
         throw error;
@@ -697,8 +689,8 @@ export class IESClient {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Cookie': this.sessionCookies,
-          'Accept': 'text/html',
+          Cookie: this.sessionCookies,
+          Accept: 'text/html',
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         },
         redirect: 'manual',
@@ -717,11 +709,7 @@ export class IESClient {
             this.sessionCookies = undefined;
             return this.fetchCsrfToken(false);
           }
-          throw new IESApiError(
-            'Authentication failed during CSRF fetch',
-            302,
-            true,
-          );
+          throw new IESApiError('Authentication failed during CSRF fetch', 302, true);
         }
       }
 
@@ -732,18 +720,11 @@ export class IESClient {
           this.sessionCookies = undefined;
           return this.fetchCsrfToken(false);
         }
-        throw new IESApiError(
-          'Authentication failed during CSRF fetch',
-          response.status,
-          true,
-        );
+        throw new IESApiError('Authentication failed during CSRF fetch', response.status, true);
       }
 
       if (!response.ok) {
-        throw new IESApiError(
-          `Failed to fetch configurations page: ${response.status}`,
-          response.status,
-        );
+        throw new IESApiError(`Failed to fetch configurations page: ${response.status}`, response.status);
       }
 
       const html = await response.text();
@@ -757,7 +738,6 @@ export class IESClient {
 
       this.log.debug('Successfully fetched CSRF token');
       return tokenMatch[1];
-
     } catch (error) {
       if (error instanceof IESApiError) {
         throw error;
@@ -824,11 +804,11 @@ export class IESClient {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Cookie': this.sessionCookies,
+          Cookie: this.sessionCookies,
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'text/html,application/xhtml+xml',
-          'Referer': `${this.baseUrl}/Configurations/?deviceId=${encodeURIComponent(this.deviceId)}`,
-          'Origin': this.baseUrl,
+          Accept: 'text/html,application/xhtml+xml',
+          Referer: `${this.baseUrl}/Configurations/?deviceId=${encodeURIComponent(this.deviceId)}`,
+          Origin: this.baseUrl,
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         },
         body,
@@ -851,11 +831,7 @@ export class IESClient {
             const newCsrfToken = await this.fetchCsrfToken();
             return this.postSetting(fieldName, value, newCsrfToken, false);
           }
-          throw new IESApiError(
-            'Authentication failed during setting update',
-            302,
-            true,
-          );
+          throw new IESApiError('Authentication failed during setting update', 302, true);
         }
         // A 302 redirect to the configurations page is success
         this.log.info(`Successfully set ${fieldName} to ${value}`);
@@ -870,22 +846,14 @@ export class IESClient {
           const newCsrfToken = await this.fetchCsrfToken();
           return this.postSetting(fieldName, value, newCsrfToken, false);
         }
-        throw new IESApiError(
-          'Authentication failed during setting update',
-          response.status,
-          true,
-        );
+        throw new IESApiError('Authentication failed during setting update', response.status, true);
       }
 
       if (!response.ok && response.status !== 302) {
-        throw new IESApiError(
-          `Failed to save setting: ${response.status}`,
-          response.status,
-        );
+        throw new IESApiError(`Failed to save setting: ${response.status}`, response.status);
       }
 
       this.log.info(`Successfully set ${fieldName} to ${value}`);
-
     } catch (error) {
       if (error instanceof IESApiError) {
         throw error;

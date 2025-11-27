@@ -1,4 +1,5 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
+
 import type { IESHeatPumpPlatform } from './platform.js';
 
 /**
@@ -24,27 +25,29 @@ export class HeatingRoomSetpointAccessory {
     this.accessory = accessory;
 
     // Set accessory information
-    this.accessory.getService(this.platform.Service.AccessoryInformation)!
+    this.accessory
+      .getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'IES')
       .setCharacteristic(this.platform.Characteristic.Model, 'Heating Control')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, 'heating-room-setpoint');
 
     // Get or create Thermostat service
-    this.service = this.accessory.getService(this.platform.Service.Thermostat)
-      || this.accessory.addService(this.platform.Service.Thermostat);
+    this.service =
+      this.accessory.getService(this.platform.Service.Thermostat) ||
+      this.accessory.addService(this.platform.Service.Thermostat);
 
     // Set display name
     this.service.setCharacteristic(this.platform.Characteristic.Name, 'Room Setpoint');
 
     // Configure Current Temperature (shows current setpoint)
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-      .setProps({
-        minValue: this.minSetpoint,
-        maxValue: this.maxSetpoint,
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).setProps({
+      minValue: this.minSetpoint,
+      maxValue: this.maxSetpoint,
+    });
 
     // Configure Target Temperature (settable setpoint)
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+    this.service
+      .getCharacteristic(this.platform.Characteristic.TargetTemperature)
       .setProps({
         minValue: this.minSetpoint,
         maxValue: this.maxSetpoint,
@@ -54,19 +57,13 @@ export class HeatingRoomSetpointAccessory {
       .onSet(this.setTargetSetpoint.bind(this));
 
     // Only AUTO mode
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-      .setProps({
-        validValues: [
-          this.platform.Characteristic.CurrentHeatingCoolingState.OFF,
-        ],
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState).setProps({
+      validValues: [this.platform.Characteristic.CurrentHeatingCoolingState.OFF],
+    });
 
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-      .setProps({
-        validValues: [
-          this.platform.Characteristic.TargetHeatingCoolingState.AUTO,
-        ],
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).setProps({
+      validValues: [this.platform.Characteristic.TargetHeatingCoolingState.AUTO],
+    });
 
     // Set target state to AUTO
     this.service.updateCharacteristic(
@@ -88,14 +85,8 @@ export class HeatingRoomSetpointAccessory {
    */
   updateSetpoint(value: number): void {
     this.currentSetpoint = value;
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.CurrentTemperature,
-      value,
-    );
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.TargetTemperature,
-      value,
-    );
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, value);
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, value);
     this.platform.log.debug(`Heating room setpoint: ${value}°C`);
   }
 

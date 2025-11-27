@@ -1,4 +1,5 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
+
 import type { IESHeatPumpPlatform } from './platform.js';
 
 /**
@@ -24,27 +25,29 @@ export class CurveOffsetAccessory {
     this.accessory = accessory;
 
     // Set accessory information
-    this.accessory.getService(this.platform.Service.AccessoryInformation)!
+    this.accessory
+      .getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'IES')
       .setCharacteristic(this.platform.Characteristic.Model, 'Heating Curve')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, 'curve-offset');
 
     // Get or create Thermostat service
-    this.service = this.accessory.getService(this.platform.Service.Thermostat)
-      || this.accessory.addService(this.platform.Service.Thermostat);
+    this.service =
+      this.accessory.getService(this.platform.Service.Thermostat) ||
+      this.accessory.addService(this.platform.Service.Thermostat);
 
     // Set display name
     this.service.setCharacteristic(this.platform.Characteristic.Name, 'Curve Offset');
 
     // Configure Current Temperature (shows current offset)
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-      .setProps({
-        minValue: this.minOffset,
-        maxValue: this.maxOffset,
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).setProps({
+      minValue: this.minOffset,
+      maxValue: this.maxOffset,
+    });
 
     // Configure Target Temperature (settable offset)
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+    this.service
+      .getCharacteristic(this.platform.Characteristic.TargetTemperature)
       .setProps({
         minValue: this.minOffset,
         maxValue: this.maxOffset,
@@ -54,19 +57,13 @@ export class CurveOffsetAccessory {
       .onSet(this.setTargetOffset.bind(this));
 
     // Only AUTO mode - offset is always active
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-      .setProps({
-        validValues: [
-          this.platform.Characteristic.CurrentHeatingCoolingState.OFF,
-        ],
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState).setProps({
+      validValues: [this.platform.Characteristic.CurrentHeatingCoolingState.OFF],
+    });
 
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-      .setProps({
-        validValues: [
-          this.platform.Characteristic.TargetHeatingCoolingState.AUTO,
-        ],
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).setProps({
+      validValues: [this.platform.Characteristic.TargetHeatingCoolingState.AUTO],
+    });
 
     // Set target state to AUTO
     this.service.updateCharacteristic(
@@ -88,14 +85,8 @@ export class CurveOffsetAccessory {
    */
   updateOffset(value: number): void {
     this.currentOffset = value;
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.CurrentTemperature,
-      value,
-    );
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.TargetTemperature,
-      value,
-    );
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, value);
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, value);
     this.platform.log.debug(`Curve offset: ${value}°C`);
   }
 

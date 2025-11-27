@@ -8,25 +8,25 @@ import type {
   Service,
 } from 'homebridge';
 
-import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
-import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
-import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
-import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
-import { SeasonModeSwitchAccessory } from './seasonModeAccessory.js';
-import {
-  PLATFORM_NAME,
-  PLUGIN_NAME,
-  TEMPERATURE_SENSORS,
-  HOT_WATER_PARAMS,
-  CURVE_OFFSET_PARAM,
-  HEATING_ROOM_SETPOINT_PARAM,
-  SEASON_MODE_PARAM,
-  DEFAULT_POLLING_INTERVAL,
-  MIN_POLLING_INTERVAL,
-  SensorDefinition,
-} from './settings.js';
 import { IESClient } from './api/client.js';
 import { IESApiError } from './api/types.js';
+import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
+import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
+import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
+import { SeasonModeSwitchAccessory } from './seasonModeAccessory.js';
+import type { SensorDefinition } from './settings.js';
+import {
+  CURVE_OFFSET_PARAM,
+  DEFAULT_POLLING_INTERVAL,
+  HEATING_ROOM_SETPOINT_PARAM,
+  HOT_WATER_PARAMS,
+  MIN_POLLING_INTERVAL,
+  PLATFORM_NAME,
+  PLUGIN_NAME,
+  SEASON_MODE_PARAM,
+  TEMPERATURE_SENSORS,
+} from './settings.js';
+import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
 
 /**
  * Plugin configuration interface
@@ -47,10 +47,10 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   public readonly Characteristic: typeof Characteristic;
 
   // Cached accessories from disk
-  private readonly accessories: Map<string, PlatformAccessory> = new Map();
+  private readonly accessories = new Map<string, PlatformAccessory>();
 
   // Active accessory handlers
-  private readonly sensorAccessories: Map<string, TemperatureSensorAccessory> = new Map();
+  private readonly sensorAccessories = new Map<string, TemperatureSensorAccessory>();
   private hotWaterThermostat?: HotWaterThermostatAccessory;
   private curveOffsetAccessory?: CurveOffsetAccessory;
   private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
@@ -104,12 +104,16 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     }
 
     if (!typedConfig.username) {
-      this.log.error('Missing required config: username. Please provide your IES account email in the plugin settings.');
+      this.log.error(
+        'Missing required config: username. Please provide your IES account email in the plugin settings.',
+      );
       return;
     }
 
     if (!typedConfig.password) {
-      this.log.error('Missing required config: password. Please provide your IES account password in the plugin settings.');
+      this.log.error(
+        'Missing required config: password. Please provide your IES account password in the plugin settings.',
+      );
       return;
     }
 
@@ -132,10 +136,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     this.cleanupObsoleteAccessories();
 
     // Start polling
-    const interval = Math.max(
-      typedConfig.pollingInterval ?? DEFAULT_POLLING_INTERVAL,
-      MIN_POLLING_INTERVAL,
-    );
+    const interval = Math.max(typedConfig.pollingInterval ?? DEFAULT_POLLING_INTERVAL, MIN_POLLING_INTERVAL);
     this.startPolling(interval);
 
     // Do initial fetch
@@ -150,9 +151,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
     for (const sensorDef of TEMPERATURE_SENSORS) {
       // Generate unique UUID from device ID + sensor paramId
-      const uuid = this.api.hap.uuid.generate(
-        `${typedConfig.deviceId}-${sensorDef.paramId}`,
-      );
+      const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-${sensorDef.paramId}`);
       this.registeredUUIDs.push(uuid);
 
       let accessory = this.accessories.get(uuid);
@@ -182,9 +181,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     const typedConfig = this.config as IESHeatPumpConfig;
 
     // Generate unique UUID for hot water thermostat
-    const uuid = this.api.hap.uuid.generate(
-      `${typedConfig.deviceId}-hot-water-thermostat`,
-    );
+    const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-hot-water-thermostat`);
     this.registeredUUIDs.push(uuid);
 
     let accessory = this.accessories.get(uuid);
@@ -210,9 +207,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     const typedConfig = this.config as IESHeatPumpConfig;
 
     // Generate unique UUID for curve offset
-    const uuid = this.api.hap.uuid.generate(
-      `${typedConfig.deviceId}-curve-offset`,
-    );
+    const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-curve-offset`);
     this.registeredUUIDs.push(uuid);
 
     let accessory = this.accessories.get(uuid);
@@ -238,9 +233,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     const typedConfig = this.config as IESHeatPumpConfig;
 
     // Generate unique UUID for heating room setpoint
-    const uuid = this.api.hap.uuid.generate(
-      `${typedConfig.deviceId}-heating-room-setpoint`,
-    );
+    const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-heating-room-setpoint`);
     this.registeredUUIDs.push(uuid);
 
     let accessory = this.accessories.get(uuid);
@@ -318,10 +311,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private startPolling(intervalSeconds: number): void {
     this.log.info(`Starting API polling every ${intervalSeconds} seconds`);
 
-    this.pollingTimer = setInterval(
-      () => this.pollApi(),
-      intervalSeconds * 1000,
-    );
+    this.pollingTimer = setInterval(() => this.pollApi(), intervalSeconds * 1000);
   }
 
   /**
@@ -345,9 +335,11 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
         if (reading) {
           // Check auto-hide threshold (for outdoor temp)
-          if ('autoHideThreshold' in sensorDef &&
-              sensorDef.autoHideThreshold !== undefined &&
-              reading.value < sensorDef.autoHideThreshold) {
+          if (
+            'autoHideThreshold' in sensorDef &&
+            sensorDef.autoHideThreshold !== undefined &&
+            reading.value < sensorDef.autoHideThreshold
+          ) {
             this.log.debug(
               `Sensor ${sensorDef.name} showing invalid reading: ${reading.value}°C (below threshold ${sensorDef.autoHideThreshold}°C)`,
             );
@@ -417,7 +409,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
           }
         }
       }
-
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {

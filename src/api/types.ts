@@ -4,9 +4,9 @@
  */
 
 export interface IESParameter {
-  id: string;             // e.g., "_USER.Input.THeatSupply"
-  actualValue: string;    // e.g., "32.5"
-  displayFormt?: string;  // e.g., "FORM_10" (1 decimal place)
+  id: string; // e.g., "_USER.Input.THeatSupply"
+  actualValue: string; // e.g., "32.5"
+  displayFormt?: string; // e.g., "FORM_10" (1 decimal place)
   name?: string;
   displayText?: string;
   minValue?: string;
@@ -35,9 +35,9 @@ export interface IESApiResponse {
  */
 export interface TemperatureReading {
   paramId: string;
-  value: number;       // Parsed float
-  timestamp: Date;     // When we fetched it
-  raw: string;         // Original string value
+  value: number; // Parsed float
+  timestamp: Date; // When we fetched it
+  raw: string; // Original string value
 }
 
 /**
@@ -47,7 +47,7 @@ export interface IESClientConfig {
   deviceId: string;
   username: string;
   password: string;
-  baseUrl?: string;    // Default: https://www.ies-heatpumps.com
+  baseUrl?: string; // Default: https://www.ies-heatpumps.com
 }
 
 /**
@@ -68,7 +68,7 @@ export class IESApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
-    public isAuthError: boolean = false,
+    public isAuthError = false,
   ) {
     super(message);
     this.name = 'IESApiError';

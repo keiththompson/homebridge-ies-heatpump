@@ -57,4 +57,4 @@ export const HEATING_ROOM_SETPOINT_PARAM = '_USER.HeatSPCtrl.TroomSet' as const;
  */
 export const SEASON_MODE_PARAM = '_USER.Parameters.SeasonMode' as const;
 
-export type SensorDefinition = typeof TEMPERATURE_SENSORS[number];
+export type SensorDefinition = (typeof TEMPERATURE_SENSORS)[number];

@@ -1,4 +1,5 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
+
 import type { IESHeatPumpPlatform } from './platform.js';
 
 /**
@@ -25,27 +26,29 @@ export class HotWaterThermostatAccessory {
     this.accessory = accessory;
 
     // Set accessory information
-    this.accessory.getService(this.platform.Service.AccessoryInformation)!
+    this.accessory
+      .getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'IES')
       .setCharacteristic(this.platform.Characteristic.Model, 'Hot Water Tank')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, 'hot-water');
 
     // Get or create Thermostat service
-    this.service = this.accessory.getService(this.platform.Service.Thermostat)
-      || this.accessory.addService(this.platform.Service.Thermostat);
+    this.service =
+      this.accessory.getService(this.platform.Service.Thermostat) ||
+      this.accessory.addService(this.platform.Service.Thermostat);
 
     // Set display name
     this.service.setCharacteristic(this.platform.Characteristic.Name, 'Hot Water');
 
     // Configure Current Temperature
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-      .setProps({
-        minValue: 0,
-        maxValue: 100,
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).setProps({
+      minValue: 0,
+      maxValue: 100,
+    });
 
     // Configure Target Temperature with valid range
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+    this.service
+      .getCharacteristic(this.platform.Characteristic.TargetTemperature)
       .setProps({
         minValue: this.minSetpoint,
         maxValue: this.maxSetpoint,
@@ -56,21 +59,17 @@ export class HotWaterThermostatAccessory {
 
     // Configure Heating/Cooling State
     // Hot water only heats, so we limit the valid values
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-      .setProps({
-        validValues: [
-          this.platform.Characteristic.CurrentHeatingCoolingState.OFF,
-          this.platform.Characteristic.CurrentHeatingCoolingState.HEAT,
-        ],
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState).setProps({
+      validValues: [
+        this.platform.Characteristic.CurrentHeatingCoolingState.OFF,
+        this.platform.Characteristic.CurrentHeatingCoolingState.HEAT,
+      ],
+    });
 
     // Only AUTO mode - heat pump manages heating automatically
-    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-      .setProps({
-        validValues: [
-          this.platform.Characteristic.TargetHeatingCoolingState.AUTO,
-        ],
-      });
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).setProps({
+      validValues: [this.platform.Characteristic.TargetHeatingCoolingState.AUTO],
+    });
 
     // Set target state to AUTO (heat pump controls it)
     this.service.updateCharacteristic(
@@ -86,10 +85,7 @@ export class HotWaterThermostatAccessory {
    */
   updateCurrentTemperature(value: number): void {
     this.currentTemperature = value;
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.CurrentTemperature,
-      value,
-    );
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, value);
     this.platform.log.debug(`Hot Water current temp: ${value}°C`);
   }
 
@@ -98,10 +94,7 @@ export class HotWaterThermostatAccessory {
    */
   updateTargetTemperature(value: number): void {
     this.targetTemperature = value;
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.TargetTemperature,
-      value,
-    );
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetTemperature, value);
     this.platform.log.debug(`Hot Water target temp: ${value}°C`);
   }
 
@@ -113,10 +106,7 @@ export class HotWaterThermostatAccessory {
     const state = isHeating
       ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
       : this.platform.Characteristic.CurrentHeatingCoolingState.OFF;
-    this.service.updateCharacteristic(
-      this.platform.Characteristic.CurrentHeatingCoolingState,
-      state,
-    );
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState, state);
     this.platform.log.debug(`Hot Water heating: ${isHeating ? 'ON' : 'OFF'}`);
   }
 
