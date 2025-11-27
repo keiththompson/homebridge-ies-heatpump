@@ -203,6 +203,15 @@ export class IESClient {
 
       clearTimeout(timeoutId);
 
+      // Check for redirect to login page (session expired)
+      if (response.redirected && response.url.includes('login')) {
+        throw new IESApiError(
+          'Session expired during CSRF fetch - redirected to login page',
+          302,
+          true,
+        );
+      }
+
       if (!response.ok) {
         throw new IESApiError(
           `Failed to fetch configurations page: ${response.status}`,
@@ -211,6 +220,7 @@ export class IESClient {
       }
 
       const html = await response.text();
+      this.log.info(`CSRF page response URL: ${response.url}, redirected: ${response.redirected}, length: ${html.length}`);
 
       // Extract CSRF token from: <input name="__RequestVerificationToken" type="hidden" value="..." />
       const tokenMatch = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
@@ -292,7 +302,7 @@ export class IESClient {
 
       clearTimeout(timeoutId);
 
-      this.log.debug(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
+      this.log.info(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
 
       // Check for redirect to login page (session expired)
       if (response.redirected && response.url.includes('login')) {
