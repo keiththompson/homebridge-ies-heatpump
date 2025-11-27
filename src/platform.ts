@@ -336,6 +336,8 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
     try {
       await this.apiClient.setHotWaterSetpoint(temperature);
+      // Refresh values immediately after successful write
+      await this.pollApi();
     } catch (error) {
       if (error instanceof IESApiError) {
         this.log.error(`Failed to set hot water setpoint: ${error.message}`);
@@ -356,6 +358,8 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
     try {
       await this.apiClient.setCurveOffset(offset);
+      // Refresh values immediately after successful write
+      await this.pollApi();
     } catch (error) {
       if (error instanceof IESApiError) {
         this.log.error(`Failed to set curve offset: ${error.message}`);
