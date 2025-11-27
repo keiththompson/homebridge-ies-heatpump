@@ -130,6 +130,11 @@ export class IESClient {
     }
 
     this.log.debug(`Parsed ${readings.size} readings from API response`);
+
+    // Log all available paramIds for debugging
+    const paramIds = Array.from(readings.keys());
+    this.log.info(`Available paramIds: ${paramIds.join(', ')}`);
+
     return readings;
   }
 }
