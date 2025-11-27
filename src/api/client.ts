@@ -26,12 +26,44 @@ export class IESClient {
   }
 
   /**
-   * Fetch current readings from the IES API
+   * Fetch monitoring data (temperatures, states) from the IES API
+   */
+  async fetchMonitoring(): Promise<Map<string, TemperatureReading>> {
+    const url = `${this.baseUrl}/Monitoring/AsJSON/?deviceId=${encodeURIComponent(this.deviceId)}`;
+    return this.fetchFromEndpoint(url, 'monitoring');
+  }
+
+  /**
+   * Fetch settings data (setpoints, configuration) from the IES API
+   */
+  async fetchSettings(): Promise<Map<string, TemperatureReading>> {
+    const url = `${this.baseUrl}/Configurations/AsJSON/?deviceId=${encodeURIComponent(this.deviceId)}`;
+    return this.fetchFromEndpoint(url, 'settings');
+  }
+
+  /**
+   * Fetch all readings (monitoring + settings combined)
    */
   async fetchReadings(): Promise<Map<string, TemperatureReading>> {
-    const url = `${this.baseUrl}/Monitoring/AsJSON/?deviceId=${encodeURIComponent(this.deviceId)}`;
+    const [monitoring, settings] = await Promise.all([
+      this.fetchMonitoring(),
+      this.fetchSettings(),
+    ]);
 
-    this.log.debug(`Fetching from: ${url}`);
+    // Merge both maps, settings values override monitoring if duplicated
+    const combined = new Map(monitoring);
+    for (const [key, value] of settings) {
+      combined.set(key, value);
+    }
+
+    return combined;
+  }
+
+  /**
+   * Fetch data from a specific endpoint
+   */
+  private async fetchFromEndpoint(url: string, endpointName: string): Promise<Map<string, TemperatureReading>> {
+    this.log.debug(`Fetching ${endpointName} from: ${url}`);
 
     try {
       const controller = new AbortController();
@@ -74,21 +106,7 @@ export class IESClient {
       }
 
       const data = await response.json() as IESApiResponse;
-
-      // Debug: log raw response structure
-      this.log.info(`API response keys: ${Object.keys(data).join(', ')}`);
-      if (data.groups && Array.isArray(data.groups)) {
-        this.log.info(`Number of groups: ${data.groups.length}`);
-        for (const group of data.groups) {
-          const groupKeys = Object.keys(group);
-          this.log.info(`Group keys: ${groupKeys.join(', ')}`);
-          this.log.info(`Group content (first 500 chars): ${JSON.stringify(group).substring(0, 500)}`);
-        }
-      } else {
-        this.log.warn(`Raw response (first 1000 chars): ${JSON.stringify(data).substring(0, 1000)}`);
-      }
-
-      return this.parseResponse(data);
+      return this.parseResponse(data, endpointName);
 
     } catch (error) {
       if (error instanceof IESApiError) {
@@ -107,9 +125,9 @@ export class IESClient {
   }
 
   /**
-   * Parse API response and extract temperature readings
+   * Parse API response and extract readings
    */
-  private parseResponse(data: IESApiResponse): Map<string, TemperatureReading> {
+  private parseResponse(data: IESApiResponse, endpointName: string): Map<string, TemperatureReading> {
     const readings = new Map<string, TemperatureReading>();
     const now = new Date();
 
@@ -143,12 +161,7 @@ export class IESClient {
       }
     }
 
-    this.log.debug(`Parsed ${readings.size} readings from API response`);
-
-    // Log all available paramIds for debugging
-    const paramIds = Array.from(readings.keys());
-    this.log.info(`Available paramIds: ${paramIds.join(', ')}`);
-
+    this.log.debug(`Parsed ${readings.size} readings from ${endpointName}`);
     return readings;
   }
 }
