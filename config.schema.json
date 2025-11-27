@@ -5,7 +5,7 @@
   "strictValidation": true,
   "schema": {
     "type": "object",
-    "required": ["name", "deviceId", "cookies"],
+    "required": ["name", "deviceId", "username", "password"],
     "properties": {
       "name": {
         "title": "Name",
@@ -19,10 +19,16 @@
         "description": "Your IES heat pump device ID (found in the monitoring URL)",
         "placeholder": "999"
       },
-      "cookies": {
-        "title": "Authentication Cookies",
+      "username": {
+        "title": "Username",
         "type": "string",
-        "description": "ASP.NET session cookies from browser DevTools (copy the full Cookie header value)"
+        "format": "email",
+        "description": "Your IES Heat Pumps account email address"
+      },
+      "password": {
+        "title": "Password",
+        "type": "string",
+        "description": "Your IES Heat Pumps account password"
       },
       "pollingInterval": {
         "title": "Polling Interval (seconds)",
@@ -38,7 +44,18 @@
     {
       "type": "fieldset",
       "title": "Device Configuration",
-      "items": ["deviceId", "cookies"]
+      "items": ["deviceId"]
+    },
+    {
+      "type": "fieldset",
+      "title": "Account Credentials",
+      "items": [
+        "username",
+        {
+          "key": "password",
+          "type": "password"
+        }
+      ]
     },
     {
       "type": "fieldset",

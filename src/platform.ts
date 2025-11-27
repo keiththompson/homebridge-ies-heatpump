@@ -33,7 +33,8 @@ import { IESApiError } from './api/types.js';
  */
 interface IESHeatPumpConfig extends PlatformConfig {
   deviceId?: string;
-  cookies?: string;
+  username?: string;
+  password?: string;
   pollingInterval?: number;
 }
 
@@ -102,8 +103,13 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
       return;
     }
 
-    if (!typedConfig.cookies) {
-      this.log.error('Missing required config: cookies. Please provide your session cookies in the plugin settings.');
+    if (!typedConfig.username) {
+      this.log.error('Missing required config: username. Please provide your IES account email in the plugin settings.');
+      return;
+    }
+
+    if (!typedConfig.password) {
+      this.log.error('Missing required config: password. Please provide your IES account password in the plugin settings.');
       return;
     }
 
@@ -111,7 +117,8 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     this.apiClient = new IESClient(
       {
         deviceId: typedConfig.deviceId,
-        cookies: typedConfig.cookies,
+        username: typedConfig.username,
+        password: typedConfig.password,
       },
       this.log,
     );
@@ -325,8 +332,11 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
       return;
     }
 
+    this.log.debug('Polling API for updates...');
+
     try {
       const readings = await this.apiClient.fetchReadings();
+      this.log.debug(`Received ${readings.size} readings from API`);
 
       // Update temperature sensors
       for (const [paramId, handler] of this.sensorAccessories) {
@@ -411,7 +421,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {
-          this.log.error('Authentication failed - please update your cookies in the plugin config');
+          this.log.error('Authentication failed - please check your username and password in the plugin config');
         } else {
           this.log.error(`API error: ${error.message}`);
         }
