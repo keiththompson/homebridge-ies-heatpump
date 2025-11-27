@@ -12,7 +12,7 @@ import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
 import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
-import { SeasonModeAccessory } from './seasonModeAccessory.js';
+import { SeasonModeSwitchAccessory } from './seasonModeAccessory.js';
 import {
   PLATFORM_NAME,
   PLUGIN_NAME,
@@ -53,7 +53,8 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private hotWaterThermostat?: HotWaterThermostatAccessory;
   private curveOffsetAccessory?: CurveOffsetAccessory;
   private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
-  private seasonModeAccessory?: SeasonModeAccessory;
+  private seasonModeSwitches: SeasonModeSwitchAccessory[] = [];
+  private currentSeasonMode = 1; // 0=Summer, 1=Winter, 2=Auto
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
@@ -252,31 +253,44 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   }
 
   /**
-   * Register season mode accessory
+   * Register season mode switches (3 separate accessories)
    */
   private discoverSeasonMode(): void {
     const typedConfig = this.config as IESHeatPumpConfig;
 
-    // Generate unique UUID for season mode
-    const uuid = this.api.hap.uuid.generate(
-      `${typedConfig.deviceId}-season-mode`,
-    );
-    this.registeredUUIDs.push(uuid);
+    const modes = [
+      { value: 0, name: 'Summer Mode' },
+      { value: 1, name: 'Winter Mode' },
+      { value: 2, name: 'Auto Mode' },
+    ];
 
-    let accessory = this.accessories.get(uuid);
+    for (const mode of modes) {
+      const uuid = this.api.hap.uuid.generate(
+        `${typedConfig.deviceId}-season-${mode.name.toLowerCase().replace(' ', '-')}`,
+      );
+      this.registeredUUIDs.push(uuid);
 
-    if (accessory) {
-      // Restore from cache
-      this.log.info('Restoring Season Mode from cache');
-    } else {
-      // Create new accessory
-      this.log.info('Adding new Season Mode accessory');
-      accessory = new this.api.platformAccessory('Season Mode', uuid);
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      let accessory = this.accessories.get(uuid);
+
+      if (accessory) {
+        this.log.info(`Restoring ${mode.name} from cache`);
+      } else {
+        this.log.info(`Adding new ${mode.name} accessory`);
+        accessory = new this.api.platformAccessory(mode.name, uuid);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      }
+
+      const handler = new SeasonModeSwitchAccessory(
+        this,
+        accessory,
+        mode.value,
+        mode.name,
+        async (modeValue) => this.setSeasonMode(modeValue),
+        () => this.currentSeasonMode,
+      );
+
+      this.seasonModeSwitches.push(handler);
     }
-
-    // Create handler
-    this.seasonModeAccessory = new SeasonModeAccessory(this, accessory);
   }
 
   /**
@@ -378,12 +392,19 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         }
       }
 
-      // Update season mode
-      if (this.seasonModeAccessory) {
+      // Update season mode switches
+      if (this.seasonModeSwitches.length > 0) {
         const mode = readings.get(SEASON_MODE_PARAM);
         if (mode) {
-          this.seasonModeAccessory.clearFault();
-          this.seasonModeAccessory.updateMode(mode.raw);
+          // Parse the mode number from the API value (e.g., "TXT_TGT_SEA_MODE1" -> 1)
+          const match = mode.raw.match(/MODE(\d)$/);
+          if (match) {
+            this.currentSeasonMode = parseInt(match[1], 10);
+          }
+          for (const sw of this.seasonModeSwitches) {
+            sw.clearFault();
+            sw.updateState(this.currentSeasonMode);
+          }
         }
       }
 
@@ -402,7 +423,9 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.hotWaterThermostat?.setUnavailable();
         this.curveOffsetAccessory?.setUnavailable();
         this.heatingRoomSetpointAccessory?.setUnavailable();
-        this.seasonModeAccessory?.setUnavailable();
+        for (const sw of this.seasonModeSwitches) {
+          sw.setUnavailable();
+        }
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
@@ -483,6 +506,12 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     if (!this.apiClient) {
       this.log.error('Cannot set season mode - API client not initialized');
       return;
+    }
+
+    // Update local state and switches immediately for responsiveness
+    this.currentSeasonMode = mode;
+    for (const sw of this.seasonModeSwitches) {
+      sw.updateState(mode);
     }
 
     try {
