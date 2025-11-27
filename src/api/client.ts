@@ -131,7 +131,7 @@ export class IESClient {
 
     const csrfMatch = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
     if (!csrfMatch) {
-      this.log.error(`[Auth] Failed to find CSRF token. HTML preview: ${html.substring(0, 500)}`);
+      this.log.error('[Auth] Failed to find CSRF token in login page HTML');
       throw new IESApiError('Failed to extract CSRF token from login page');
     }
 
@@ -239,7 +239,7 @@ export class IESClient {
     const sessionStateMatch = html.match(/name=['"]session_state['"][^>]*value=['"]([^'"]+)['"]/);
 
     if (!codeMatch) {
-      this.log.error(`[Auth] Failed to find code. HTML preview: ${html.substring(0, 500)}`);
+      this.log.error('[Auth] Failed to find authorization code in callback response');
       throw new IESApiError('Failed to extract authorization code from callback');
     }
 
@@ -297,8 +297,7 @@ export class IESClient {
 
     // Should get a 302 redirect with session cookies
     if (response.status !== 302) {
-      const text = await response.text();
-      this.log.error(`[Auth] OIDC failed. Response: ${text.substring(0, 500)}`);
+      this.log.error(`[Auth] OIDC completion failed with status ${response.status}`);
       throw new IESApiError(`OIDC completion failed with status ${response.status}`, response.status, true);
     }
 
@@ -752,7 +751,7 @@ export class IESClient {
       // Extract CSRF token from: <input name="__RequestVerificationToken" type="hidden" value="..." />
       const tokenMatch = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
       if (!tokenMatch) {
-        this.log.debug(`Configurations page response: ${html.substring(0, 500)}`);
+        this.log.debug('Could not find CSRF token in configurations page HTML');
         throw new IESApiError('Could not find CSRF token in configurations page');
       }
 
@@ -820,7 +819,7 @@ export class IESClient {
       formData.append('__RequestVerificationToken', csrfToken);
 
       const body = formData.toString();
-      this.log.debug(`POST body: ${body}`);
+      this.log.debug(`POSTing settings form for field: ${fieldName}`);
 
       const response = await fetch(url, {
         method: 'POST',
