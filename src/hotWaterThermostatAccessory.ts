@@ -134,11 +134,7 @@ export class HotWaterThermostatAccessory {
     const newTemp = value as number;
     this.platform.log.info(`Setting hot water setpoint to ${newTemp}°C`);
 
-    // TODO: Implement API write
-    // For now, just update local state
     this.targetTemperature = newTemp;
-
-    // Notify platform to write to API
     await this.platform.setHotWaterSetpoint(newTemp);
   }
 
