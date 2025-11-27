@@ -2,7 +2,7 @@
   "name": "homebridge-ies-heatpump",
   "displayName": "IES Heat Pump",
   "type": "module",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "Homebridge plugin for IES/Xterra heat pump temperature monitoring",
   "author": "Keith",
   "license": "Apache-2.0",
