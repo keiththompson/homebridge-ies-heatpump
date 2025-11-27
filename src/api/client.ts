@@ -275,7 +275,7 @@ export class IESClient {
       formData.append('__RequestVerificationToken', csrfToken);
 
       const body = formData.toString();
-      this.log.debug(`POST body: ${body}`);
+      this.log.info(`POST body: ${body}`);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -293,8 +293,8 @@ export class IESClient {
       clearTimeout(timeoutId);
 
       const responseText = await response.text();
-      this.log.debug(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
-      this.log.debug(`POST response body (first 500 chars): ${responseText.substring(0, 500)}`);
+      this.log.info(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
+      this.log.info(`POST response body (first 1000 chars): ${responseText.substring(0, 1000)}`);
 
       if (!response.ok) {
         throw new IESApiError(
