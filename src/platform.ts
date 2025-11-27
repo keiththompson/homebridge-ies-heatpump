@@ -12,6 +12,7 @@ import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
 import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
+import { SeasonModeAccessory } from './seasonModeAccessory.js';
 import {
   PLATFORM_NAME,
   PLUGIN_NAME,
@@ -19,6 +20,7 @@ import {
   HOT_WATER_PARAMS,
   CURVE_OFFSET_PARAM,
   HEATING_ROOM_SETPOINT_PARAM,
+  SEASON_MODE_PARAM,
   DEFAULT_POLLING_INTERVAL,
   MIN_POLLING_INTERVAL,
   SensorDefinition,
@@ -51,6 +53,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private hotWaterThermostat?: HotWaterThermostatAccessory;
   private curveOffsetAccessory?: CurveOffsetAccessory;
   private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
+  private seasonModeAccessory?: SeasonModeAccessory;
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
@@ -117,6 +120,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     this.discoverHotWater();
     this.discoverCurveOffset();
     this.discoverHeatingRoomSetpoint();
+    this.discoverSeasonMode();
     this.cleanupObsoleteAccessories();
 
     // Start polling
@@ -248,6 +252,34 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   }
 
   /**
+   * Register season mode accessory
+   */
+  private discoverSeasonMode(): void {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    // Generate unique UUID for season mode
+    const uuid = this.api.hap.uuid.generate(
+      `${typedConfig.deviceId}-season-mode`,
+    );
+    this.registeredUUIDs.push(uuid);
+
+    let accessory = this.accessories.get(uuid);
+
+    if (accessory) {
+      // Restore from cache
+      this.log.info('Restoring Season Mode from cache');
+    } else {
+      // Create new accessory
+      this.log.info('Adding new Season Mode accessory');
+      accessory = new this.api.platformAccessory('Season Mode', uuid);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+
+    // Create handler
+    this.seasonModeAccessory = new SeasonModeAccessory(this, accessory);
+  }
+
+  /**
    * Remove any cached accessories that are no longer defined
    */
   private cleanupObsoleteAccessories(): void {
@@ -346,6 +378,15 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         }
       }
 
+      // Update season mode
+      if (this.seasonModeAccessory) {
+        const mode = readings.get(SEASON_MODE_PARAM);
+        if (mode) {
+          this.seasonModeAccessory.clearFault();
+          this.seasonModeAccessory.updateMode(mode.raw);
+        }
+      }
+
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {
@@ -361,6 +402,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.hotWaterThermostat?.setUnavailable();
         this.curveOffsetAccessory?.setUnavailable();
         this.heatingRoomSetpointAccessory?.setUnavailable();
+        this.seasonModeAccessory?.setUnavailable();
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
@@ -429,6 +471,29 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.log.error(`Failed to set heating room setpoint: ${error.message}`);
       } else {
         this.log.error('Unexpected error setting heating room setpoint:', error);
+      }
+    }
+  }
+
+  /**
+   * Set season mode via API
+   * @param mode 0=Summer, 1=Winter, 2=Auto
+   */
+  async setSeasonMode(mode: number): Promise<void> {
+    if (!this.apiClient) {
+      this.log.error('Cannot set season mode - API client not initialized');
+      return;
+    }
+
+    try {
+      await this.apiClient.setSeasonMode(mode);
+      // Refresh values immediately after successful write
+      await this.pollApi();
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        this.log.error(`Failed to set season mode: ${error.message}`);
+      } else {
+        this.log.error('Unexpected error setting season mode:', error);
       }
     }
   }

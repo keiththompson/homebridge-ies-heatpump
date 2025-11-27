@@ -51,4 +51,10 @@ export const CURVE_OFFSET_PARAM = '_USER.HeatSPCtrl.ToffSet' as const;
  */
 export const HEATING_ROOM_SETPOINT_PARAM = '_USER.HeatSPCtrl.TroomSet' as const;
 
+/**
+ * Season Mode parameter ID
+ * Values: 0 = Summer, 1 = Winter, 2 = Auto
+ */
+export const SEASON_MODE_PARAM = '_USER.Parameters.SeasonMode' as const;
+
 export type SensorDefinition = typeof TEMPERATURE_SENSORS[number];

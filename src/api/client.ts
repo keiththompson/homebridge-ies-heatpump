@@ -210,6 +210,20 @@ export class IESClient {
   }
 
   /**
+   * Set the season mode
+   * @param mode 0=Summer, 1=Winter, 2=Auto
+   */
+  async setSeasonMode(mode: number): Promise<void> {
+    const modeName = ['Summer', 'Winter', 'Auto'][mode] || 'Unknown';
+    this.log.info(`Setting season mode to ${modeName} (${mode})`);
+
+    const csrfToken = await this.fetchCsrfToken();
+
+    // This is a select field, so we send the numeric value as a string
+    await this.postSetting('_USER_Parameters_SeasonMode_C', mode.toString(), csrfToken);
+  }
+
+  /**
    * Fetch CSRF token from the configurations page
    */
   private async fetchCsrfToken(): Promise<string> {
@@ -289,14 +303,14 @@ export class IESClient {
       formData.append('btnSubmit', '');
       formData.append('hdnDeviceId', this.deviceId);
 
-      // Select fields - use -1 for "no change"
-      formData.append('_USER_Parameters_MainSwitch_C', '-1');
-      formData.append('_USER_Parameters_SeasonMode_C', '-1');
-      formData.append('_USER_HeatSPCtrl_Type_C', '-1');
-      formData.append('_USER_HeatSPCtrl_Curve_C', '-1');
-      formData.append('_USER_HotWater_Source_C', '-1');
-      formData.append('_USER_Heating_Source_C', '-1');
-      formData.append('_USER_Heating_CtrlMode_C', '-1');
+      // Select fields - use -1 for "no change", or the value if this is the field being set
+      formData.append('_USER_Parameters_MainSwitch_C', fieldName === '_USER_Parameters_MainSwitch_C' ? value : '-1');
+      formData.append('_USER_Parameters_SeasonMode_C', fieldName === '_USER_Parameters_SeasonMode_C' ? value : '-1');
+      formData.append('_USER_HeatSPCtrl_Type_C', fieldName === '_USER_HeatSPCtrl_Type_C' ? value : '-1');
+      formData.append('_USER_HeatSPCtrl_Curve_C', fieldName === '_USER_HeatSPCtrl_Curve_C' ? value : '-1');
+      formData.append('_USER_HotWater_Source_C', fieldName === '_USER_HotWater_Source_C' ? value : '-1');
+      formData.append('_USER_Heating_Source_C', fieldName === '_USER_Heating_Source_C' ? value : '-1');
+      formData.append('_USER_Heating_CtrlMode_C', fieldName === '_USER_Heating_CtrlMode_C' ? value : '-1');
 
       // Text/number fields - empty for "no change", or the value if this is the field being set
       formData.append('_USER_HeatSPCtrl_ToffSet_T', fieldName === '_USER_HeatSPCtrl_ToffSet_T' ? value : '');
