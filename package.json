@@ -6,13 +6,13 @@
   "description": "Homebridge plugin for IES/Xterra heat pump temperature monitoring",
   "author": "Keith",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/Keith/homebridge-ies-heatpump#readme",
+  "homepage": "https://github.com/keiththompson/homebridge-ies-heatpump#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Keith/homebridge-ies-heatpump.git"
+    "url": "https://github.com/keiththompson/homebridge-ies-heatpump.git"
   },
   "bugs": {
-    "url": "https://github.com/Keith/homebridge-ies-heatpump/issues"
+    "url": "https://github.com/keiththompson/homebridge-ies-heatpump/issues"
   },
   "keywords": [
     "homebridge-plugin",
