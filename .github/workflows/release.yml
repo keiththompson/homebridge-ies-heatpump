@@ -31,7 +31,9 @@ jobs:
             exit 1
           fi
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish
+        env:
+          NPM_CONFIG_PROVENANCE: true
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

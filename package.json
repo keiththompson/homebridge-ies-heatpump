@@ -7,6 +7,10 @@
   "author": "Keith",
   "license": "Apache-2.0",
   "homepage": "https://github.com/keiththompson/homebridge-ies-heatpump#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/keiththompson/homebridge-ies-heatpump.git"
