@@ -74,6 +74,18 @@ export class IESClient {
       }
 
       const data = await response.json() as IESApiResponse;
+
+      // Debug: log raw response structure
+      this.log.info(`API response keys: ${Object.keys(data).join(', ')}`);
+      if (data.groups && Array.isArray(data.groups)) {
+        this.log.info(`Number of groups: ${data.groups.length}`);
+        for (const group of data.groups) {
+          this.log.info(`Group: ${group.groupName || group.groupId || 'unnamed'}, params: ${group.parameters?.length || 0}`);
+        }
+      } else {
+        this.log.warn(`Raw response (first 1000 chars): ${JSON.stringify(data).substring(0, 1000)}`);
+      }
+
       return this.parseResponse(data);
 
     } catch (error) {
