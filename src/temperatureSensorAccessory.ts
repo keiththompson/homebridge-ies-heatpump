@@ -31,11 +31,11 @@ export class TemperatureSensorAccessory {
     this.service.setCharacteristic(this.platform.Characteristic.Name, sensorDef.name);
 
     // Configure temperature characteristic
-    // HomeKit TemperatureSensor has default range of 0-100, heat pumps can show negative temps
+    // HomeKit TemperatureSensor has default range of 0-100, extend to show actual API values
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .setProps({
-        minValue: -50,
-        maxValue: 100,
+        minValue: -100,
+        maxValue: 150,
       });
 
     this.platform.log.debug(`Initialized sensor: ${sensorDef.name} (${sensorDef.paramId})`);
