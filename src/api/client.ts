@@ -174,8 +174,11 @@ export class IESClient {
     // First, fetch the CSRF token from the configurations page
     const csrfToken = await this.fetchCsrfToken();
 
+    // Format value with decimal (API expects "22.0" not "22")
+    const valueStr = temperature.toFixed(1);
+
     // POST the new setpoint
-    await this.postSetting('_USER_HotWater_SetPoint_T', temperature.toString(), csrfToken);
+    await this.postSetting('_USER_HotWater_SetPoint_T', valueStr, csrfToken);
   }
 
   /**
@@ -271,24 +274,38 @@ export class IESClient {
       // CSRF token
       formData.append('__RequestVerificationToken', csrfToken);
 
+      const body = formData.toString();
+      this.log.debug(`POST body: ${body}`);
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Cookie': this.cookies,
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'text/html,application/xhtml+xml',
+          'Referer': `${this.baseUrl}/main/configurations/${encodeURIComponent(this.deviceId)}`,
+          'Origin': this.baseUrl,
         },
-        body: formData.toString(),
+        body,
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
+
+      const responseText = await response.text();
+      this.log.debug(`POST response status: ${response.status}, redirected: ${response.redirected}, url: ${response.url}`);
+      this.log.debug(`POST response body (first 500 chars): ${responseText.substring(0, 500)}`);
 
       if (!response.ok) {
         throw new IESApiError(
           `Failed to save setting: ${response.status}`,
           response.status,
         );
+      }
+
+      // Check if response contains error indicators
+      if (responseText.includes('error') || responseText.includes('Error')) {
+        this.log.warn('Response may contain errors - check response body');
       }
 
       this.log.info(`Successfully set ${fieldName} to ${value}`);
