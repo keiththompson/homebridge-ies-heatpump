@@ -33,16 +33,20 @@ export const TEMPERATURE_SENSORS = [
     subtypeId: 'return-temp',
   },
   {
-    paramId: '_USER.Input.TWaterTank',
-    name: 'Hot Water Tank',
-    subtypeId: 'water-tank',
-  },
-  {
     paramId: '_USER.Input.Tamb',
     name: 'Outdoor Temperature',
     subtypeId: 'outdoor-temp',
     autoHideThreshold: -40, // Hide if value below this (indicates sensor not installed)
   },
 ] as const;
+
+/**
+ * Hot Water Thermostat parameter IDs
+ */
+export const HOT_WATER_PARAMS = {
+  currentTemp: '_USER.Input.TWaterTank',
+  setpoint: '_USER.HotWater.SetPoint',
+  heatingState: '_USER.Output.HotTapWater',
+} as const;
 
 export type SensorDefinition = typeof TEMPERATURE_SENSORS[number];

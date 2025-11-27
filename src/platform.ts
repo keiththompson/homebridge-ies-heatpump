@@ -9,10 +9,12 @@ import type {
 } from 'homebridge';
 
 import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
+import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
 import {
   PLATFORM_NAME,
   PLUGIN_NAME,
   TEMPERATURE_SENSORS,
+  HOT_WATER_PARAMS,
   DEFAULT_POLLING_INTERVAL,
   MIN_POLLING_INTERVAL,
   SensorDefinition,
@@ -31,7 +33,7 @@ interface IESHeatPumpConfig extends PlatformConfig {
 
 /**
  * IES Heat Pump Platform
- * Main platform class that manages temperature sensor accessories
+ * Main platform class that manages temperature sensor and thermostat accessories
  */
 export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
@@ -42,12 +44,16 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
   // Active accessory handlers
   private readonly sensorAccessories: Map<string, TemperatureSensorAccessory> = new Map();
+  private hotWaterThermostat?: HotWaterThermostatAccessory;
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
 
   // Polling timer
   private pollingTimer?: NodeJS.Timeout;
+
+  // Track all registered UUIDs for cleanup
+  private registeredUUIDs: string[] = [];
 
   constructor(
     public readonly log: Logging,
@@ -100,8 +106,10 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
       this.log,
     );
 
-    // Discover/register sensors
+    // Discover/register accessories
     this.discoverSensors();
+    this.discoverHotWater();
+    this.cleanupObsoleteAccessories();
 
     // Start polling
     const interval = Math.max(
@@ -118,7 +126,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
    * Register temperature sensor accessories
    */
   private discoverSensors(): void {
-    const registeredUUIDs: string[] = [];
     const typedConfig = this.config as IESHeatPumpConfig;
 
     for (const sensorDef of TEMPERATURE_SENSORS) {
@@ -126,7 +133,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
       const uuid = this.api.hap.uuid.generate(
         `${typedConfig.deviceId}-${sensorDef.paramId}`,
       );
-      registeredUUIDs.push(uuid);
+      this.registeredUUIDs.push(uuid);
 
       let accessory = this.accessories.get(uuid);
 
@@ -146,10 +153,42 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
       const handler = new TemperatureSensorAccessory(this, accessory);
       this.sensorAccessories.set(sensorDef.paramId, handler);
     }
+  }
 
-    // Remove any cached accessories that are no longer defined
+  /**
+   * Register hot water thermostat accessory
+   */
+  private discoverHotWater(): void {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    // Generate unique UUID for hot water thermostat
+    const uuid = this.api.hap.uuid.generate(
+      `${typedConfig.deviceId}-hot-water-thermostat`,
+    );
+    this.registeredUUIDs.push(uuid);
+
+    let accessory = this.accessories.get(uuid);
+
+    if (accessory) {
+      // Restore from cache
+      this.log.info('Restoring Hot Water thermostat from cache');
+    } else {
+      // Create new accessory
+      this.log.info('Adding new Hot Water thermostat');
+      accessory = new this.api.platformAccessory('Hot Water', uuid);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+
+    // Create handler
+    this.hotWaterThermostat = new HotWaterThermostatAccessory(this, accessory);
+  }
+
+  /**
+   * Remove any cached accessories that are no longer defined
+   */
+  private cleanupObsoleteAccessories(): void {
     for (const [uuid, accessory] of this.accessories) {
-      if (!registeredUUIDs.includes(uuid)) {
+      if (!this.registeredUUIDs.includes(uuid)) {
         this.log.info('Removing obsolete accessory:', accessory.displayName);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       }
@@ -179,7 +218,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     try {
       const readings = await this.apiClient.fetchReadings();
 
-      // Update each sensor with its reading
+      // Update temperature sensors
       for (const [paramId, handler] of this.sensorAccessories) {
         const reading = readings.get(paramId);
         const sensorDef = handler.accessory.context.sensorDefinition as SensorDefinition;
@@ -192,13 +231,36 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
             this.log.debug(
               `Sensor ${sensorDef.name} showing invalid reading: ${reading.value}°C (below threshold ${sensorDef.autoHideThreshold}°C)`,
             );
-            // Still update with actual value so user can see it's not working
           }
 
           handler.clearFault();
           handler.updateTemperature(reading.value);
         } else {
           this.log.warn(`No reading found for sensor: ${paramId}`);
+        }
+      }
+
+      // Update hot water thermostat
+      if (this.hotWaterThermostat) {
+        // Current temperature
+        const currentTemp = readings.get(HOT_WATER_PARAMS.currentTemp);
+        if (currentTemp) {
+          this.hotWaterThermostat.clearFault();
+          this.hotWaterThermostat.updateCurrentTemperature(currentTemp.value);
+        }
+
+        // Setpoint (target temperature)
+        const setpoint = readings.get(HOT_WATER_PARAMS.setpoint);
+        if (setpoint) {
+          this.hotWaterThermostat.updateTargetTemperature(setpoint.value);
+        }
+
+        // Heating state
+        const heatingState = readings.get(HOT_WATER_PARAMS.heatingState);
+        if (heatingState) {
+          // API returns string like "TOGGLE_VALUE_OFFON_1" for on
+          const isHeating = heatingState.raw === 'TOGGLE_VALUE_OFFON_1';
+          this.hotWaterThermostat.updateHeatingState(isHeating);
         }
       }
 
@@ -210,13 +272,23 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
           this.log.error(`API error: ${error.message}`);
         }
 
-        // Mark all sensors as faulted
+        // Mark all accessories as faulted
         for (const handler of this.sensorAccessories.values()) {
           handler.setUnavailable();
         }
+        this.hotWaterThermostat?.setUnavailable();
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
     }
+  }
+
+  /**
+   * Set hot water setpoint via API
+   * TODO: Implement actual API write with CSRF token
+   */
+  async setHotWaterSetpoint(temperature: number): Promise<void> {
+    this.log.info(`TODO: Write hot water setpoint ${temperature}°C to API`);
+    // This will be implemented with CSRF token handling
   }
 }
