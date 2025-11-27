@@ -34,7 +34,8 @@ Add the following to your Homebridge `config.json`:
       "platform": "IESHeatPump",
       "name": "IES Heat Pump",
       "deviceId": "YOUR_DEVICE_ID",
-      "cookies": "YOUR_SESSION_COOKIES",
+      "username": "your@email.com",
+      "password": "your_password",
       "pollingInterval": 60
     }
   ]
@@ -48,21 +49,9 @@ Add the following to your Homebridge `config.json`:
 | `platform` | Yes | Must be `IESHeatPump` |
 | `name` | Yes | Display name for the platform |
 | `deviceId` | Yes | Your IES device ID (found in the URL when viewing your device) |
-| `cookies` | Yes | Session cookies from the IES web portal (see below) |
+| `username` | Yes | Your IES Heat Pumps account email |
+| `password` | Yes | Your IES Heat Pumps account password |
 | `pollingInterval` | No | Polling interval in seconds (default: 60, minimum: 30) |
-
-### Getting Your Cookies
-
-1. Log into [ies-heatpumps.com](https://www.ies-heatpumps.com) in your browser
-2. Open Developer Tools (F12) → Application → Cookies
-3. Copy all cookies from `www.ies-heatpumps.com`:
-   - `.AspNetCore.Antiforgery.*`
-   - `.AspNetCore.Cookies`
-   - `.AspNetCore.CookiesC1`
-   - `.AspNetCore.CookiesC2`
-4. Format as a single string: `name1=value1; name2=value2; ...`
-
-**Note:** Cookies expire periodically. If you see authentication errors in the logs, you'll need to refresh your cookies.
 
 ### Getting Your Device ID
 
@@ -86,14 +75,14 @@ This plugin creates the following accessories:
 
 ## Troubleshooting
 
-### "Session expired" errors
-Your cookies have expired. Get fresh cookies from the browser and update your config.
+### "Authentication failed" errors
+Verify your username and password are correct. These are the same credentials you use to log into [ies-heatpumps.com](https://www.ies-heatpumps.com).
 
 ### Values not updating
 Check that the polling interval is reasonable (60 seconds recommended). Changes made in HomeKit should reflect immediately.
 
 ### Accessories showing "No Response"
-1. Check your cookies are valid
+1. Verify your username and password are correct
 2. Verify your device ID is correct
 3. Check Homebridge logs for specific error messages
 
