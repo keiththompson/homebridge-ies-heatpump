@@ -4,23 +4,30 @@
  */
 
 export interface IESParameter {
-  paramId: string;        // e.g., "_USER.Input.THeatSupply"
+  id: string;             // e.g., "_USER.Input.THeatSupply"
   actualValue: string;    // e.g., "32.5"
   displayFormt?: string;  // e.g., "FORM_10" (1 decimal place)
-  paramName?: string;
-  unit?: string;
+  name?: string;
+  displayText?: string;
+  minValue?: string;
+  maxValue?: string;
+  readOnly?: boolean;
 }
 
 export interface IESGroup {
-  groupId?: string;
-  groupName?: string;
-  parameters: IESParameter[];
+  id?: string;
+  name?: string;
+  viewParameters: IESParameter[];
 }
 
 export interface IESApiResponse {
   groups: IESGroup[];
   deviceId?: string;
-  timestamp?: string;
+  deviceOnline?: boolean;
+  deviceName?: string;
+  productId?: string;
+  viewId?: number;
+  isInitialized?: boolean;
 }
 
 /**

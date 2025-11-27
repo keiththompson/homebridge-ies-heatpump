@@ -119,23 +119,23 @@ export class IESClient {
     }
 
     for (const group of data.groups) {
-      if (!group.parameters || !Array.isArray(group.parameters)) {
+      if (!group.viewParameters || !Array.isArray(group.viewParameters)) {
         continue;
       }
 
-      for (const param of group.parameters) {
-        if (!param.paramId || param.actualValue === undefined) {
+      for (const param of group.viewParameters) {
+        if (!param.id || param.actualValue === undefined) {
           continue;
         }
 
         const value = parseFloat(param.actualValue);
         if (isNaN(value)) {
-          this.log.debug(`Skipping non-numeric value for ${param.paramId}: ${param.actualValue}`);
+          this.log.debug(`Skipping non-numeric value for ${param.id}: ${param.actualValue}`);
           continue;
         }
 
-        readings.set(param.paramId, {
-          paramId: param.paramId,
+        readings.set(param.id, {
+          paramId: param.id,
           value,
           timestamp: now,
           raw: param.actualValue,
