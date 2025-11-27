@@ -164,4 +164,118 @@ export class IESClient {
     this.log.debug(`Parsed ${readings.size} readings from ${endpointName}`);
     return readings;
   }
+
+  /**
+   * Set the hot water setpoint
+   */
+  async setHotWaterSetpoint(temperature: number): Promise<void> {
+    this.log.info(`Setting hot water setpoint to ${temperature}°C`);
+
+    // First, fetch the CSRF token from the configurations page
+    const csrfToken = await this.fetchCsrfToken();
+
+    // POST the new setpoint
+    await this.postSetting('_USER_HotWater_SetPoint_T', temperature.toString(), csrfToken);
+  }
+
+  /**
+   * Fetch CSRF token from the configurations page
+   */
+  private async fetchCsrfToken(): Promise<string> {
+    const url = `${this.baseUrl}/main/configurations/${encodeURIComponent(this.deviceId)}`;
+    this.log.debug(`Fetching CSRF token from: ${url}`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Cookie': this.cookies,
+          'Accept': 'text/html',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new IESApiError(
+          `Failed to fetch configurations page: ${response.status}`,
+          response.status,
+        );
+      }
+
+      const html = await response.text();
+
+      // Extract CSRF token from: <input name="__RequestVerificationToken" type="hidden" value="..." />
+      const tokenMatch = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
+      if (!tokenMatch) {
+        throw new IESApiError('Could not find CSRF token in configurations page');
+      }
+
+      this.log.debug('Successfully fetched CSRF token');
+      return tokenMatch[1];
+
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        throw new IESApiError(`Failed to fetch CSRF token: ${error.message}`);
+      }
+      throw new IESApiError('Unknown error fetching CSRF token');
+    }
+  }
+
+  /**
+   * POST a setting value to the API
+   */
+  private async postSetting(fieldName: string, value: string, csrfToken: string): Promise<void> {
+    const url = `${this.baseUrl}/Configurations/Save`;
+    this.log.debug(`POSTing setting ${fieldName}=${value} to: ${url}`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      // Build form data
+      const formData = new URLSearchParams();
+      formData.append('hdnDeviceId', this.deviceId);
+      formData.append('__RequestVerificationToken', csrfToken);
+      formData.append(fieldName, value);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Cookie': this.cookies,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json, text/html',
+        },
+        body: formData.toString(),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new IESApiError(
+          `Failed to save setting: ${response.status}`,
+          response.status,
+        );
+      }
+
+      this.log.info(`Successfully set ${fieldName} to ${value}`);
+
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        throw new IESApiError(`Failed to save setting: ${error.message}`);
+      }
+      throw new IESApiError('Unknown error saving setting');
+    }
+  }
 }

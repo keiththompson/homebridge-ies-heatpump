@@ -285,10 +285,21 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
 
   /**
    * Set hot water setpoint via API
-   * TODO: Implement actual API write with CSRF token
    */
   async setHotWaterSetpoint(temperature: number): Promise<void> {
-    this.log.info(`TODO: Write hot water setpoint ${temperature}°C to API`);
-    // This will be implemented with CSRF token handling
+    if (!this.apiClient) {
+      this.log.error('Cannot set hot water setpoint - API client not initialized');
+      return;
+    }
+
+    try {
+      await this.apiClient.setHotWaterSetpoint(temperature);
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        this.log.error(`Failed to set hot water setpoint: ${error.message}`);
+      } else {
+        this.log.error('Unexpected error setting hot water setpoint:', error);
+      }
+    }
   }
 }
