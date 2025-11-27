@@ -185,7 +185,8 @@ export class IESClient {
    * Fetch CSRF token from the configurations page
    */
   private async fetchCsrfToken(): Promise<string> {
-    const url = `${this.baseUrl}/main/configurations/${encodeURIComponent(this.deviceId)}`;
+    // Try the configurations page (note: /main/configurations/ requires different auth)
+    const url = `${this.baseUrl}/Configurations/?deviceId=${encodeURIComponent(this.deviceId)}`;
     this.log.debug(`Fetching CSRF token from: ${url}`);
 
     try {
@@ -293,7 +294,7 @@ export class IESClient {
           'Cookie': this.cookies,
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'text/html,application/xhtml+xml',
-          'Referer': `${this.baseUrl}/main/configurations/${encodeURIComponent(this.deviceId)}`,
+          'Referer': `${this.baseUrl}/Configurations/?deviceId=${encodeURIComponent(this.deviceId)}`,
           'Origin': this.baseUrl,
         },
         body,
