@@ -223,6 +223,14 @@ export class IESClient {
       const html = await response.text();
       this.log.info(`CSRF page response URL: ${response.url}, redirected: ${response.redirected}, length: ${html.length}`);
 
+      // Debug: log portion of HTML around the token
+      const tokenIndex = html.indexOf('RequestVerificationToken');
+      if (tokenIndex !== -1) {
+        this.log.info(`Found token text at index ${tokenIndex}: ${html.substring(tokenIndex - 20, tokenIndex + 150)}`);
+      } else {
+        this.log.info(`No RequestVerificationToken found. Page starts with: ${html.substring(0, 500)}`);
+      }
+
       // Extract CSRF token from: <input name="__RequestVerificationToken" type="hidden" value="..." />
       const tokenMatch = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
       if (!tokenMatch) {
