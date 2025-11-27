@@ -49,7 +49,7 @@ export class HotWaterThermostatAccessory {
       .setProps({
         minValue: this.minSetpoint,
         maxValue: this.maxSetpoint,
-        minStep: 0.5,
+        minStep: 1,
       })
       .onGet(this.getTargetTemperature.bind(this))
       .onSet(this.setTargetTemperature.bind(this));
