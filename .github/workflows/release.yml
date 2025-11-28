@@ -33,12 +33,30 @@ jobs:
             echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
             exit 1
           fi
+      - name: Generate CHANGELOG
+        run: npm run changelog
+      - name: Commit CHANGELOG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "docs: update CHANGELOG for ${GITHUB_REF#refs/tags/}"
+          git push origin HEAD:latest
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:
           NPM_CONFIG_PROVENANCE: true
+      - name: Read CHANGELOG for release
+        id: changelog
+        run: |
+          # Extract the latest version section from CHANGELOG
+          VERSION=${GITHUB_REF#refs/tags/v}
+          CONTENT=$(awk "/## \[${VERSION}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md)
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.content }}
           draft: false
