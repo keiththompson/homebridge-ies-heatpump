@@ -10,12 +10,12 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'src/index.ts', 'src/test/**/*.ts'],
-      // Initial thresholds - increase as more tests are added
+      // Thresholds updated per issue #8
       thresholds: {
-        lines: 40,
-        functions: 40,
-        branches: 35,
-        statements: 40,
+        lines: 60,
+        functions: 60,
+        branches: 55,
+        statements: 60,
       },
     },
     testTimeout: 10000,

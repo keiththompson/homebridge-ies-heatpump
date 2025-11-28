@@ -169,6 +169,38 @@ export function createMockCharacteristicTypes(): typeof Characteristic {
 }
 
 /**
+ * Mock PlatformAccessory class for use with 'new' keyword
+ */
+class MockPlatformAccessory {
+  UUID: string;
+  displayName: string;
+  context: Record<string, unknown> = {};
+  private services = new Map<string, Service>();
+
+  constructor(name: string, uuid: string) {
+    this.displayName = name;
+    this.UUID = uuid;
+    this.services.set('AccessoryInformation', createMockService());
+  }
+
+  getService(serviceType: string | Service): Service | undefined {
+    const key = typeof serviceType === 'string' ? serviceType : (serviceType as unknown as { name: string }).name;
+    return this.services.get(key);
+  }
+
+  addService(serviceType: string | Service): Service {
+    const key = typeof serviceType === 'string' ? serviceType : (serviceType as unknown as { name: string }).name;
+    const service = createMockService();
+    this.services.set(key, service);
+    return service;
+  }
+
+  removeService(_service: Service): void {
+    // No-op for mock
+  }
+}
+
+/**
  * Create a mock Homebridge API
  */
 export function createMockAPI(): API {
@@ -193,11 +225,7 @@ export function createMockAPI(): API {
         accessories.delete(acc.UUID);
       }
     }),
-    platformAccessory: vi.fn((name: string, uuid: string) => {
-      const acc = createMockAccessory(name);
-      (acc as unknown as { UUID: string }).UUID = uuid;
-      return acc;
-    }),
+    platformAccessory: MockPlatformAccessory as unknown as typeof PlatformAccessory,
     _accessories: accessories,
   } as unknown as API;
 }
