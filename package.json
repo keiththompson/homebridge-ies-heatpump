@@ -4,7 +4,11 @@
   "type": "module",
   "version": "1.0.23",
   "description": "Homebridge plugin for IES/Xterra heat pump temperature monitoring",
-  "author": "Keith",
+  "author": {
+    "name": "Keith Thompson",
+    "email": "keithjoethompson@gmail.com",
+    "url": "https://github.com/keiththompson"
+  },
   "license": "MIT",
   "homepage": "https://github.com/keiththompson/homebridge-ies-heatpump#readme",
   "publishConfig": {
