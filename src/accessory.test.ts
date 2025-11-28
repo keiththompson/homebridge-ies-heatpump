@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
+import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
+import { SeasonModeSwitchAccessory } from './seasonModeAccessory.js';
 import { TemperatureSensorAccessory } from './temperatureSensorAccessory.js';
 import {
   createMockAccessory,
@@ -88,14 +90,22 @@ describe('TemperatureSensorAccessory', () => {
   describe('setUnavailable', () => {
     it('should set fault status to GENERAL_FAULT', () => {
       sensor.setUnavailable();
-      // The service should have updateCharacteristic called with StatusFault
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.GENERAL_FAULT,
+      );
     });
   });
 
   describe('clearFault', () => {
     it('should set fault status to NO_FAULT', () => {
       sensor.clearFault();
-      // The service should have updateCharacteristic called with NO_FAULT
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.NO_FAULT,
+      );
     });
   });
 
@@ -158,16 +168,24 @@ describe('HotWaterThermostatAccessory', () => {
   });
 
   describe('setUnavailable', () => {
-    it('should set fault status', () => {
+    it('should set fault status to GENERAL_FAULT', () => {
       thermostat.setUnavailable();
-      // Verifies the method doesn't throw
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.GENERAL_FAULT,
+      );
     });
   });
 
   describe('clearFault', () => {
-    it('should clear fault status', () => {
+    it('should clear fault status to NO_FAULT', () => {
       thermostat.clearFault();
-      // Verifies the method doesn't throw
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.NO_FAULT,
+      );
     });
   });
 });
@@ -215,16 +233,167 @@ describe('CurveOffsetAccessory', () => {
   });
 
   describe('setUnavailable', () => {
-    it('should set fault status', () => {
+    it('should set fault status to GENERAL_FAULT', () => {
       curveOffset.setUnavailable();
-      // Verifies the method doesn't throw
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.GENERAL_FAULT,
+      );
     });
   });
 
   describe('clearFault', () => {
-    it('should clear fault status', () => {
+    it('should clear fault status to NO_FAULT', () => {
       curveOffset.clearFault();
-      // Verifies the method doesn't throw
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.NO_FAULT,
+      );
+    });
+  });
+});
+
+describe('HeatingRoomSetpointAccessory', () => {
+  let mockPlatform: ReturnType<typeof createMockPlatform>;
+  let mockAccessory: ReturnType<typeof createMockAccessory>;
+  let heatingSetpoint: HeatingRoomSetpointAccessory;
+
+  beforeEach(() => {
+    mockPlatform = createMockPlatform();
+    mockAccessory = createMockAccessory('Room Setpoint');
+
+    heatingSetpoint = new HeatingRoomSetpointAccessory(mockPlatform as any, mockAccessory);
+  });
+
+  describe('constructor', () => {
+    it('should initialize with accessory information', () => {
+      const infoService = mockAccessory.getService('AccessoryInformation');
+      expect(infoService?.setCharacteristic).toHaveBeenCalledWith('Manufacturer', 'IES');
+      expect(infoService?.setCharacteristic).toHaveBeenCalledWith('Model', 'Heating Control');
+      expect(infoService?.setCharacteristic).toHaveBeenCalledWith('SerialNumber', 'heating-room-setpoint');
+    });
+
+    it('should log initialization', () => {
+      expect(mockPlatform.log.debug).toHaveBeenCalledWith('Initialized Heating Room Setpoint accessory');
+    });
+  });
+
+  describe('updateSetpoint', () => {
+    it('should update setpoint temperature', () => {
+      heatingSetpoint.updateSetpoint(22);
+      expect(mockPlatform.log.debug).toHaveBeenCalledWith('Heating room setpoint: 22°C');
+    });
+
+    it('should update to minimum value', () => {
+      heatingSetpoint.updateSetpoint(5);
+      expect(mockPlatform.log.debug).toHaveBeenCalledWith('Heating room setpoint: 5°C');
+    });
+
+    it('should update to maximum value', () => {
+      heatingSetpoint.updateSetpoint(40);
+      expect(mockPlatform.log.debug).toHaveBeenCalledWith('Heating room setpoint: 40°C');
+    });
+  });
+
+  describe('setUnavailable', () => {
+    it('should set fault status to GENERAL_FAULT', () => {
+      heatingSetpoint.setUnavailable();
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.GENERAL_FAULT,
+      );
+    });
+  });
+
+  describe('clearFault', () => {
+    it('should clear fault status to NO_FAULT', () => {
+      heatingSetpoint.clearFault();
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.NO_FAULT,
+      );
+    });
+  });
+});
+
+describe('SeasonModeSwitchAccessory', () => {
+  let mockPlatform: ReturnType<typeof createMockPlatform>;
+  let mockAccessory: ReturnType<typeof createMockAccessory>;
+  let seasonSwitch: SeasonModeSwitchAccessory;
+  let mockOnSetMode: (mode: number) => Promise<void>;
+  let mockGetCurrentMode: () => number;
+
+  beforeEach(() => {
+    mockPlatform = createMockPlatform();
+    mockAccessory = createMockAccessory('Winter Mode');
+    mockOnSetMode = vi.fn().mockResolvedValue(undefined) as unknown as (mode: number) => Promise<void>;
+    mockGetCurrentMode = vi.fn().mockReturnValue(1) as unknown as () => number;
+
+    seasonSwitch = new SeasonModeSwitchAccessory(
+      mockPlatform as any,
+      mockAccessory,
+      1, // modeValue: Winter
+      'Winter Mode',
+      mockOnSetMode,
+      mockGetCurrentMode,
+    );
+  });
+
+  describe('constructor', () => {
+    it('should initialize with accessory information', () => {
+      const infoService = mockAccessory.getService('AccessoryInformation');
+      expect(infoService?.setCharacteristic).toHaveBeenCalledWith('Manufacturer', 'IES');
+      expect(infoService?.setCharacteristic).toHaveBeenCalledWith('Model', 'Season Mode');
+      expect(infoService?.setCharacteristic).toHaveBeenCalledWith('SerialNumber', 'season-winter mode');
+    });
+
+    it('should log initialization', () => {
+      expect(mockPlatform.log.debug).toHaveBeenCalledWith('Initialized Season Mode switch: Winter Mode');
+    });
+
+    it('should expose modeValue and modeName', () => {
+      expect(seasonSwitch.modeValue).toBe(1);
+      expect(seasonSwitch.modeName).toBe('Winter Mode');
+    });
+  });
+
+  describe('updateState', () => {
+    it('should update switch state to ON when mode matches', () => {
+      seasonSwitch.updateState(1); // Winter mode
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith('On', true);
+    });
+
+    it('should update switch state to OFF when mode does not match', () => {
+      seasonSwitch.updateState(0); // Summer mode
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith('On', false);
+    });
+  });
+
+  describe('setUnavailable', () => {
+    it('should set fault status to GENERAL_FAULT', () => {
+      seasonSwitch.setUnavailable();
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.GENERAL_FAULT,
+      );
+    });
+  });
+
+  describe('clearFault', () => {
+    it('should clear fault status to NO_FAULT', () => {
+      seasonSwitch.clearFault();
+      const service = (mockAccessory.addService as ReturnType<typeof vi.fn>).mock.results[0]?.value;
+      expect(service?.updateCharacteristic).toHaveBeenCalledWith(
+        mockPlatform.Characteristic.StatusFault,
+        mockPlatform.Characteristic.StatusFault.NO_FAULT,
+      );
     });
   });
 });
