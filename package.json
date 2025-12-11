@@ -29,6 +29,10 @@
     "xterra",
     "temperature"
   ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/keiththompson"
+  },
   "main": "dist/index.js",
   "engines": {
     "node": "^20.18.0 || ^22.10.0 || ^24.0.0",
