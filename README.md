@@ -1,5 +1,6 @@
 # Homebridge IES Heat Pump
 
+[![verified-by-homebridge](https://img.shields.io/badge/homebridge-verified-blueviolet?color=%23491F59&style=flat)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins) 
 [![CI](https://github.com/keiththompson/homebridge-ies-heatpump/actions/workflows/build.yml/badge.svg)](https://github.com/keiththompson/homebridge-ies-heatpump/actions/workflows/build.yml)
 [![npm](https://img.shields.io/npm/v/homebridge-ies-heatpump)](https://www.npmjs.com/package/homebridge-ies-heatpump)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
