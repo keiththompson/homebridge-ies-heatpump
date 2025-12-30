@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.29](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.29...v1.0.29)
+## [v1.0.30](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.30...v1.0.30)
+
+## [v1.0.30](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.29...v1.0.30) - 2025-12-30
+
+### Merged
+
+- 1.0.30 [`#25`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/25)
+- feat: add Min Heating Setpoint accessory [`#24`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/24)
+
+### Commits
+
+- docs: update CHANGELOG for v1.0.29 [`39a9ae2`](https://github.com/keiththompson/homebridge-ies-heatpump/commit/39a9ae2889bdf0446c617ff0604f047b0be4ea34)
 
 ## [v1.0.29](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.28...v1.0.29) - 2025-12-30
 
