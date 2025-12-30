@@ -10,16 +10,21 @@ import type {
 
 import { IESClient } from './api/client.js';
 import { IESApiError } from './api/types.js';
+import { CompensationTypeSwitchAccessory } from './compensationTypeAccessory.js';
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
 import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
+import { MinHeatingSetpointAccessory } from './minHeatingSetpointAccessory.js';
 import { SeasonModeSwitchAccessory } from './seasonModeAccessory.js';
 import type { SensorDefinition } from './settings.js';
 import {
+  COMPENSATION_TYPE_PARAM,
+  COMPENSATION_TYPES,
   CURVE_OFFSET_PARAM,
   DEFAULT_POLLING_INTERVAL,
   HEATING_ROOM_SETPOINT_PARAM,
   HOT_WATER_PARAMS,
+  MIN_HEATING_SETPOINT_PARAM,
   MIN_POLLING_INTERVAL,
   PLATFORM_NAME,
   PLUGIN_NAME,
@@ -54,8 +59,11 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private hotWaterThermostat?: HotWaterThermostatAccessory;
   private curveOffsetAccessory?: CurveOffsetAccessory;
   private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
+  private minHeatingSetpointAccessory?: MinHeatingSetpointAccessory;
   private seasonModeSwitches: SeasonModeSwitchAccessory[] = [];
+  private compensationTypeSwitches: CompensationTypeSwitchAccessory[] = [];
   private currentSeasonMode = 1; // 0=Summer, 1=Winter, 2=Auto
+  private currentCompensationType = 0; // 0-7 for different compensation modes
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
@@ -132,7 +140,9 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     this.discoverHotWater();
     this.discoverCurveOffset();
     this.discoverHeatingRoomSetpoint();
+    this.discoverMinHeatingSetpoint();
     this.discoverSeasonMode();
+    this.discoverCompensationType();
     this.cleanupObsoleteAccessories();
 
     // Start polling
@@ -294,6 +304,65 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   }
 
   /**
+   * Register compensation type switches (8 separate accessories)
+   */
+  private discoverCompensationType(): void {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    for (const compType of COMPENSATION_TYPES) {
+      const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-comp-type-${compType.value}`);
+      this.registeredUUIDs.push(uuid);
+
+      let accessory = this.accessories.get(uuid);
+
+      if (accessory) {
+        this.log.info(`Restoring ${compType.name} Compensation from cache`);
+      } else {
+        this.log.info(`Adding new ${compType.name} Compensation accessory`);
+        accessory = new this.api.platformAccessory(`${compType.name} Comp`, uuid);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      }
+
+      const handler = new CompensationTypeSwitchAccessory(
+        this,
+        accessory,
+        compType.value,
+        `${compType.name} Comp`,
+        async (typeValue) => this.setCompensationType(typeValue),
+        () => this.currentCompensationType,
+      );
+
+      this.compensationTypeSwitches.push(handler);
+    }
+  }
+
+  /**
+   * Register min heating setpoint accessory
+   */
+  private discoverMinHeatingSetpoint(): void {
+    const typedConfig = this.config as IESHeatPumpConfig;
+
+    // Generate unique UUID for min heating setpoint
+    const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-min-heating-setpoint`);
+    this.registeredUUIDs.push(uuid);
+
+    let accessory = this.accessories.get(uuid);
+
+    if (accessory) {
+      // Restore from cache
+      this.log.info('Restoring Min Heating Setpoint from cache');
+    } else {
+      // Create new accessory
+      this.log.info('Adding new Min Heating Setpoint accessory');
+      accessory = new this.api.platformAccessory('Min Heating Setpoint', uuid);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+
+    // Create handler
+    this.minHeatingSetpointAccessory = new MinHeatingSetpointAccessory(this, accessory);
+  }
+
+  /**
    * Remove any cached accessories that are no longer defined
    */
   private cleanupObsoleteAccessories(): void {
@@ -409,6 +478,31 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
           }
         }
       }
+
+      // Update min heating setpoint
+      if (this.minHeatingSetpointAccessory) {
+        const setpoint = readings.get(MIN_HEATING_SETPOINT_PARAM);
+        if (setpoint) {
+          this.minHeatingSetpointAccessory.clearFault();
+          this.minHeatingSetpointAccessory.updateSetpoint(setpoint.value);
+        }
+      }
+
+      // Update compensation type switches
+      if (this.compensationTypeSwitches.length > 0) {
+        const compType = readings.get(COMPENSATION_TYPE_PARAM);
+        if (compType) {
+          // Parse the type number from the API value (e.g., "TXT_TGT_AMB_COMP_MIN" -> 0)
+          const foundType = COMPENSATION_TYPES.find((t) => t.apiValue === compType.raw);
+          if (foundType) {
+            this.currentCompensationType = foundType.value;
+          }
+          for (const sw of this.compensationTypeSwitches) {
+            sw.clearFault();
+            sw.updateState(this.currentCompensationType);
+          }
+        }
+      }
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {
@@ -424,7 +518,11 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.hotWaterThermostat?.setUnavailable();
         this.curveOffsetAccessory?.setUnavailable();
         this.heatingRoomSetpointAccessory?.setUnavailable();
+        this.minHeatingSetpointAccessory?.setUnavailable();
         for (const sw of this.seasonModeSwitches) {
+          sw.setUnavailable();
+        }
+        for (const sw of this.compensationTypeSwitches) {
           sw.setUnavailable();
         }
       } else {
@@ -524,6 +622,58 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.log.error(`Failed to set season mode: ${error.message}`);
       } else {
         this.log.error('Unexpected error setting season mode:', error);
+      }
+    }
+  }
+
+  /**
+   * Set compensation type via API
+   * @param type 0-7 for different compensation modes
+   */
+  async setCompensationType(type: number): Promise<void> {
+    if (!this.apiClient) {
+      this.log.error('Cannot set compensation type - API client not initialized');
+      return;
+    }
+
+    // Update local state and switches immediately for responsiveness
+    this.currentCompensationType = type;
+    for (const sw of this.compensationTypeSwitches) {
+      sw.updateState(type);
+    }
+
+    try {
+      await this.apiClient.setCompensationType(type);
+      // Refresh values immediately after successful write
+      await this.pollApi();
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        this.log.error(`Failed to set compensation type: ${error.message}`);
+      } else {
+        this.log.error('Unexpected error setting compensation type:', error);
+      }
+    }
+  }
+
+  /**
+   * Set min heating setpoint via API
+   * @param temperature 0-70°C
+   */
+  async setMinHeatingSetpoint(temperature: number): Promise<void> {
+    if (!this.apiClient) {
+      this.log.error('Cannot set min heating setpoint - API client not initialized');
+      return;
+    }
+
+    try {
+      await this.apiClient.setMinHeatingSetpoint(temperature);
+      // Refresh values immediately after successful write
+      await this.pollApi();
+    } catch (error) {
+      if (error instanceof IESApiError) {
+        this.log.error(`Failed to set min heating setpoint: ${error.message}`);
+      } else {
+        this.log.error('Unexpected error setting min heating setpoint:', error);
       }
     }
   }
