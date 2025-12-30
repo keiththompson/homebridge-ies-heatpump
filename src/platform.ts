@@ -10,7 +10,7 @@ import type {
 
 import { IESClient } from './api/client.js';
 import { IESApiError } from './api/types.js';
-import { CompensationTypeSwitchAccessory } from './compensationTypeAccessory.js';
+import { CompensationTypeSelectorAccessory } from './compensationTypeSelectorAccessory.js';
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
 import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
@@ -61,9 +61,8 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
   private minHeatingSetpointAccessory?: MinHeatingSetpointAccessory;
   private seasonModeSwitches: SeasonModeSwitchAccessory[] = [];
-  private compensationTypeSwitches: CompensationTypeSwitchAccessory[] = [];
+  private compensationTypeSelector?: CompensationTypeSelectorAccessory;
   private currentSeasonMode = 1; // 0=Summer, 1=Winter, 2=Auto
-  private currentCompensationType = 0; // 0-7 for different compensation modes
 
   // API client (initialized after config validation)
   private apiClient?: IESClient;
@@ -304,36 +303,28 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   }
 
   /**
-   * Register compensation type switches (8 separate accessories)
+   * Register compensation type selector (Television service with InputSource)
    */
   private discoverCompensationType(): void {
     const typedConfig = this.config as IESHeatPumpConfig;
 
-    for (const compType of COMPENSATION_TYPES) {
-      const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-comp-type-${compType.value}`);
-      this.registeredUUIDs.push(uuid);
+    // Generate unique UUID for compensation type selector
+    const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-comp-type-selector`);
+    this.registeredUUIDs.push(uuid);
 
-      let accessory = this.accessories.get(uuid);
+    let accessory = this.accessories.get(uuid);
 
-      if (accessory) {
-        this.log.info(`Restoring ${compType.name} Compensation from cache`);
-      } else {
-        this.log.info(`Adding new ${compType.name} Compensation accessory`);
-        accessory = new this.api.platformAccessory(`${compType.name} Comp`, uuid);
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      }
-
-      const handler = new CompensationTypeSwitchAccessory(
-        this,
-        accessory,
-        compType.value,
-        `${compType.name} Comp`,
-        async (typeValue) => this.setCompensationType(typeValue),
-        () => this.currentCompensationType,
-      );
-
-      this.compensationTypeSwitches.push(handler);
+    if (accessory) {
+      this.log.info('Restoring Compensation Type selector from cache');
+    } else {
+      this.log.info('Adding new Compensation Type selector');
+      accessory = new this.api.platformAccessory('Compensation Type', uuid);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
     }
+
+    this.compensationTypeSelector = new CompensationTypeSelectorAccessory(this, accessory, async (type) =>
+      this.setCompensationType(type),
+    );
   }
 
   /**
@@ -488,18 +479,15 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         }
       }
 
-      // Update compensation type switches
-      if (this.compensationTypeSwitches.length > 0) {
+      // Update compensation type selector
+      if (this.compensationTypeSelector) {
         const compType = readings.get(COMPENSATION_TYPE_PARAM);
         if (compType) {
           // Parse the type number from the API value (e.g., "TXT_TGT_AMB_COMP_MIN" -> 0)
           const foundType = COMPENSATION_TYPES.find((t) => t.apiValue === compType.raw);
           if (foundType) {
-            this.currentCompensationType = foundType.value;
-          }
-          for (const sw of this.compensationTypeSwitches) {
-            sw.clearFault();
-            sw.updateState(this.currentCompensationType);
+            this.compensationTypeSelector.clearFault();
+            this.compensationTypeSelector.updateState(foundType.value);
           }
         }
       }
@@ -522,9 +510,7 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         for (const sw of this.seasonModeSwitches) {
           sw.setUnavailable();
         }
-        for (const sw of this.compensationTypeSwitches) {
-          sw.setUnavailable();
-        }
+        this.compensationTypeSelector?.setUnavailable();
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
@@ -636,11 +622,8 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
       return;
     }
 
-    // Update local state and switches immediately for responsiveness
-    this.currentCompensationType = type;
-    for (const sw of this.compensationTypeSwitches) {
-      sw.updateState(type);
-    }
+    // Update selector immediately for responsiveness
+    this.compensationTypeSelector?.updateState(type);
 
     try {
       await this.apiClient.setCompensationType(type);
