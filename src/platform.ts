@@ -10,7 +10,6 @@ import type {
 
 import { IESClient } from './api/client.js';
 import { IESApiError } from './api/types.js';
-import { CompensationTypeSelectorAccessory } from './compensationTypeSelectorAccessory.js';
 import { CurveOffsetAccessory } from './curveOffsetAccessory.js';
 import { HeatingRoomSetpointAccessory } from './heatingRoomSetpointAccessory.js';
 import { HotWaterThermostatAccessory } from './hotWaterThermostatAccessory.js';
@@ -18,8 +17,6 @@ import { MinHeatingSetpointAccessory } from './minHeatingSetpointAccessory.js';
 import { SeasonModeSwitchAccessory } from './seasonModeAccessory.js';
 import type { SensorDefinition } from './settings.js';
 import {
-  COMPENSATION_TYPE_PARAM,
-  COMPENSATION_TYPES,
   CURVE_OFFSET_PARAM,
   DEFAULT_POLLING_INTERVAL,
   HEATING_ROOM_SETPOINT_PARAM,
@@ -61,7 +58,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   private heatingRoomSetpointAccessory?: HeatingRoomSetpointAccessory;
   private minHeatingSetpointAccessory?: MinHeatingSetpointAccessory;
   private seasonModeSwitches: SeasonModeSwitchAccessory[] = [];
-  private compensationTypeSelector?: CompensationTypeSelectorAccessory;
   private currentSeasonMode = 1; // 0=Summer, 1=Winter, 2=Auto
 
   // API client (initialized after config validation)
@@ -141,7 +137,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
     this.discoverHeatingRoomSetpoint();
     this.discoverMinHeatingSetpoint();
     this.discoverSeasonMode();
-    this.discoverCompensationType();
     this.cleanupObsoleteAccessories();
 
     // Start polling
@@ -303,31 +298,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
   }
 
   /**
-   * Register compensation type selector (Television service with InputSource)
-   */
-  private discoverCompensationType(): void {
-    const typedConfig = this.config as IESHeatPumpConfig;
-
-    // Generate unique UUID for compensation type selector
-    const uuid = this.api.hap.uuid.generate(`${typedConfig.deviceId}-comp-type-selector`);
-    this.registeredUUIDs.push(uuid);
-
-    let accessory = this.accessories.get(uuid);
-
-    if (accessory) {
-      this.log.info('Restoring Compensation Type selector from cache');
-    } else {
-      this.log.info('Adding new Compensation Type selector');
-      accessory = new this.api.platformAccessory('Compensation Type', uuid);
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-    }
-
-    this.compensationTypeSelector = new CompensationTypeSelectorAccessory(this, accessory, async (type) =>
-      this.setCompensationType(type),
-    );
-  }
-
-  /**
    * Register min heating setpoint accessory
    */
   private discoverMinHeatingSetpoint(): void {
@@ -478,19 +448,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
           this.minHeatingSetpointAccessory.updateSetpoint(setpoint.value);
         }
       }
-
-      // Update compensation type selector
-      if (this.compensationTypeSelector) {
-        const compType = readings.get(COMPENSATION_TYPE_PARAM);
-        if (compType) {
-          // Parse the type number from the API value (e.g., "TXT_TGT_AMB_COMP_MIN" -> 0)
-          const foundType = COMPENSATION_TYPES.find((t) => t.apiValue === compType.raw);
-          if (foundType) {
-            this.compensationTypeSelector.clearFault();
-            this.compensationTypeSelector.updateState(foundType.value);
-          }
-        }
-      }
     } catch (error) {
       if (error instanceof IESApiError) {
         if (error.isAuthError) {
@@ -510,7 +467,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         for (const sw of this.seasonModeSwitches) {
           sw.setUnavailable();
         }
-        this.compensationTypeSelector?.setUnavailable();
       } else {
         this.log.error('Unexpected error during API poll:', error);
       }
@@ -608,32 +564,6 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
         this.log.error(`Failed to set season mode: ${error.message}`);
       } else {
         this.log.error('Unexpected error setting season mode:', error);
-      }
-    }
-  }
-
-  /**
-   * Set compensation type via API
-   * @param type 0-7 for different compensation modes
-   */
-  async setCompensationType(type: number): Promise<void> {
-    if (!this.apiClient) {
-      this.log.error('Cannot set compensation type - API client not initialized');
-      return;
-    }
-
-    // Update selector immediately for responsiveness
-    this.compensationTypeSelector?.updateState(type);
-
-    try {
-      await this.apiClient.setCompensationType(type);
-      // Refresh values immediately after successful write
-      await this.pollApi();
-    } catch (error) {
-      if (error instanceof IESApiError) {
-        this.log.error(`Failed to set compensation type: ${error.message}`);
-      } else {
-        this.log.error('Unexpected error setting compensation type:', error);
       }
     }
   }
