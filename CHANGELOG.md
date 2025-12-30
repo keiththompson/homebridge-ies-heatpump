@@ -5,7 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.26](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.26...v1.0.26)
+## [v1.0.28](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.28...v1.0.28)
+
+## [v1.0.28](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.27...v1.0.28) - 2025-12-30
+
+### Merged
+
+- 1.0.28 [`#21`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/21)
+
+## [v1.0.27](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.26...v1.0.27) - 2025-12-30
+
+### Merged
+
+- 1.0.27 [`#20`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/20)
+- feat: add Compensation Type and Min Heating Setpoint accessories [`#19`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/19)
+- Create FUNDING.yml [`#18`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/18)
+
+### Commits
+
+- docs: update CHANGELOG for v1.0.26 [`c9fcd90`](https://github.com/keiththompson/homebridge-ies-heatpump/commit/c9fcd904cacae748dff26569fc5b36394e3ec508)
 
 ## [v1.0.26](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.25...v1.0.26) - 2025-12-11
 
