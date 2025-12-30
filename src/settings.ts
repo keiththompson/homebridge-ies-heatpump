@@ -57,4 +57,30 @@ export const HEATING_ROOM_SETPOINT_PARAM = '_USER.HeatSPCtrl.TroomSet' as const;
  */
 export const SEASON_MODE_PARAM = '_USER.Parameters.SeasonMode' as const;
 
+/**
+ * Compensation Type parameter ID
+ * Values: 0-7 mapping to different compensation modes
+ */
+export const COMPENSATION_TYPE_PARAM = '_USER.HeatSPCtrl.Type' as const;
+
+/**
+ * Compensation Type options
+ */
+export const COMPENSATION_TYPES = [
+  { value: 0, name: 'Min', apiValue: 'TXT_TGT_AMB_COMP_MIN' },
+  { value: 1, name: 'Ambient', apiValue: 'TXT_TGT_AMB_COMP_AMBIENT' },
+  { value: 2, name: 'Room', apiValue: 'TXT_TGT_AMB_COMP_ROOM' },
+  { value: 3, name: 'Total', apiValue: 'TXT_TGT_AMB_COMP_TOTAL' },
+  { value: 4, name: 'Room On/Off', apiValue: 'TXT_TGT_AMB_COMP_ROOM_ONOFF' },
+  { value: 5, name: 'Ambient Mixing', apiValue: 'TXT_TGT_AMB_COMP_AMBIENT_MIXING' },
+  { value: 6, name: 'Room Mixing', apiValue: 'TXT_TGT_AMB_COMP_ROOM_MIXING' },
+  { value: 7, name: 'Total Mixing', apiValue: 'TXT_TGT_AMB_COMP_TOTAL_MIXING' },
+] as const;
+
+/**
+ * Min Heating Setpoint parameter ID
+ * Range: 0-70°C
+ */
+export const MIN_HEATING_SETPOINT_PARAM = '_USER.Heating.SetPointMin' as const;
+
 export type SensorDefinition = (typeof TEMPERATURE_SENSORS)[number];

@@ -669,6 +669,34 @@ export class IESClient {
   }
 
   /**
+   * Set the compensation type
+   * @param type 0-7 representing different compensation modes
+   */
+  async setCompensationType(type: number): Promise<void> {
+    this.log.info(`Setting compensation type to ${type}`);
+
+    const csrfToken = await this.fetchCsrfToken();
+
+    // This is a select field, so we send the numeric value as a string
+    await this.postSetting('_USER_HeatSPCtrl_Type_C', type.toString(), csrfToken);
+  }
+
+  /**
+   * Set the minimum heating setpoint
+   * @param temperature 0-70°C
+   */
+  async setMinHeatingSetpoint(temperature: number): Promise<void> {
+    this.log.info(`Setting min heating setpoint to ${temperature}°C`);
+
+    const csrfToken = await this.fetchCsrfToken();
+
+    // Format value with decimal (API expects "30.0" not "30")
+    const valueStr = temperature.toFixed(1);
+
+    await this.postSetting('_USER_Heating_SetPointMin_T', valueStr, csrfToken);
+  }
+
+  /**
    * Fetch CSRF token from the configurations page (uses session cookies)
    */
   private async fetchCsrfToken(retryOnAuth = true): Promise<string> {
