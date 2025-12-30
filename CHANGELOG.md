@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.28](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.28...v1.0.28)
+## [v1.0.29](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.29...v1.0.29)
+
+## [v1.0.29](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.28...v1.0.29) - 2025-12-30
+
+### Merged
+
+- 1.0.29 [`#23`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/23)
+- refactor: use Television service for Compensation Type selector [`#22`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/22)
+
+### Commits
+
+- docs: update CHANGELOG for v1.0.28 [`c63f8bd`](https://github.com/keiththompson/homebridge-ies-heatpump/commit/c63f8bd58ed5d3886b31a502aea7b0d274b3de35)
 
 ## [v1.0.28](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.27...v1.0.28) - 2025-12-30
 
