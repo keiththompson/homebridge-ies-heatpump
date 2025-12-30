@@ -58,6 +58,39 @@ export const MockCharacteristicConstants = {
   SerialNumber: 'SerialNumber',
   On: 'On',
   Brightness: 'Brightness',
+  // Television characteristics
+  ConfiguredName: 'ConfiguredName',
+  SleepDiscoveryMode: {
+    NOT_DISCOVERABLE: 0,
+    ALWAYS_DISCOVERABLE: 1,
+  },
+  Active: {
+    INACTIVE: 0,
+    ACTIVE: 1,
+  },
+  ActiveIdentifier: 'ActiveIdentifier',
+  Identifier: 'Identifier',
+  InputSourceType: {
+    OTHER: 0,
+    HOME_SCREEN: 1,
+    TUNER: 2,
+    HDMI: 3,
+    COMPOSITE_VIDEO: 4,
+    S_VIDEO: 5,
+    COMPONENT_VIDEO: 6,
+    DVI: 7,
+    AIRPLAY: 8,
+    USB: 9,
+    APPLICATION: 10,
+  },
+  IsConfigured: {
+    NOT_CONFIGURED: 0,
+    CONFIGURED: 1,
+  },
+  CurrentVisibilityState: {
+    SHOWN: 0,
+    HIDDEN: 1,
+  },
 };
 
 /**
@@ -143,6 +176,8 @@ export function createMockServiceTypes(): typeof Service {
     Switch: { name: 'Switch', UUID: 'switch-uuid' },
     Lightbulb: { name: 'Lightbulb', UUID: 'lightbulb-uuid' },
     AccessoryInformation: { name: 'AccessoryInformation', UUID: 'info-uuid' },
+    Television: { name: 'Television', UUID: 'television-uuid' },
+    InputSource: { name: 'InputSource', UUID: 'input-source-uuid' },
   } as unknown as typeof Service;
 }
 
@@ -175,23 +210,32 @@ class MockPlatformAccessory {
   UUID: string;
   displayName: string;
   context: Record<string, unknown> = {};
-  private services = new Map<string, Service>();
+  private _services = new Map<string, Service>();
 
   constructor(name: string, uuid: string) {
     this.displayName = name;
     this.UUID = uuid;
-    this.services.set('AccessoryInformation', createMockService());
+    const infoService = createMockService();
+    (infoService as any).UUID = 'info-uuid';
+    this._services.set('AccessoryInformation', infoService);
+  }
+
+  get services(): Service[] {
+    return Array.from(this._services.values());
   }
 
   getService(serviceType: string | Service): Service | undefined {
     const key = typeof serviceType === 'string' ? serviceType : (serviceType as unknown as { name: string }).name;
-    return this.services.get(key);
+    return this._services.get(key);
   }
 
-  addService(serviceType: string | Service): Service {
+  addService(serviceType: string | Service, name?: string, subtype?: string): Service {
     const key = typeof serviceType === 'string' ? serviceType : (serviceType as unknown as { name: string }).name;
     const service = createMockService();
-    this.services.set(key, service);
+    (service as any).UUID = (serviceType as unknown as { UUID: string }).UUID || key;
+    (service as any).addLinkedService = vi.fn();
+    const mapKey = subtype ? `${key}-${subtype}` : key;
+    this._services.set(mapKey, service);
     return service;
   }
 
