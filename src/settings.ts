@@ -63,4 +63,10 @@ export const SEASON_MODE_PARAM = '_USER.Parameters.SeasonMode' as const;
  */
 export const MIN_HEATING_SETPOINT_PARAM = '_USER.Heating.SetPointMin' as const;
 
+/**
+ * Heat Pump State parameter ID (for logging/analysis)
+ * Values: TXT_TGT_STATE1-29 (Ready, Heating, Hot water, Defrost, etc.)
+ */
+export const HEAT_PUMP_STATE_PARAM = '_USER.HeatPump.State' as const;
+
 export type SensorDefinition = (typeof TEMPERATURE_SENSORS)[number];
