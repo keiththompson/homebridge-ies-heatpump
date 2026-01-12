@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.30](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.30...v1.0.30)
+## [v1.0.31](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.31...v1.0.31)
+
+## [v1.0.31](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.30...v1.0.31) - 2026-01-12
+
+### Merged
+
+- feat: add debug logging for heat pump state [`#26`](https://github.com/keiththompson/homebridge-ies-heatpump/pull/26)
+
+### Commits
+
+- docs: update CHANGELOG for v1.0.30 [`0b0e086`](https://github.com/keiththompson/homebridge-ies-heatpump/commit/0b0e086c41bd28b7eabdb5fa3fee1e29197f0d0a)
 
 ## [v1.0.30](https://github.com/keiththompson/homebridge-ies-heatpump/compare/v1.0.29...v1.0.30) - 2025-12-30
 
