@@ -19,6 +19,7 @@ import type { SensorDefinition } from './settings.js';
 import {
   CURVE_OFFSET_PARAM,
   DEFAULT_POLLING_INTERVAL,
+  HEAT_PUMP_STATE_PARAM,
   HEATING_ROOM_SETPOINT_PARAM,
   HOT_WATER_PARAMS,
   MIN_HEATING_SETPOINT_PARAM,
@@ -447,6 +448,12 @@ export class IESHeatPumpPlatform implements DynamicPlatformPlugin {
           this.minHeatingSetpointAccessory.clearFault();
           this.minHeatingSetpointAccessory.updateSetpoint(setpoint.value);
         }
+      }
+
+      // Log heat pump state for analysis
+      const heatPumpState = readings.get(HEAT_PUMP_STATE_PARAM);
+      if (heatPumpState) {
+        this.log.debug(`Heat pump state: ${heatPumpState.raw}`);
       }
     } catch (error) {
       if (error instanceof IESApiError) {
